@@ -1,0 +1,11 @@
+{
+  "status": "fail",
+  "contract": "immutable_complete_object",
+  "same_valid_grant": true,
+  "missing_condition_changed_bytes": true,
+  "original_checksum_sha256": "RbTTjYRtgL9bM56lNm51ViYqZgvoqI02xL2js4vRTYs=",
+  "readback_checksum_sha256": "n7fAFJS8Htlk+o590i0nBSBN8m+ZwmRzzHoLRwgYHX0=",
+  "key": "artifact-contract/1aa8aa29-3420-48cd-9f43-bffafacc3ba1/distinct-content-overwrite",
+  "bucket": "artifact-contract",
+  "expires_at": "2026-10-14T16:29:00+00:00"
+}

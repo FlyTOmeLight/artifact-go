@@ -1,0 +1,47 @@
+{
+  "backend": "rustfs",
+  "identity_kind": "temporary ordinary IAM user",
+  "status": "pass",
+  "checks": [
+    {
+      "name": "grant_deadline",
+      "status": "pass",
+      "expires_at": "2026-10-14T16:18:28+00:00",
+      "requested_deadline": "2026-10-14T17:03:28.743316+00:00",
+      "requested_duration_seconds": 900
+    },
+    {
+      "name": "ordinary_iam_sts_upload",
+      "status": "pass",
+      "expires_at": "2026-10-14T16:18:28+00:00"
+    },
+    {
+      "name": "ordinary_iam_other_key_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "ordinary_iam_delete_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "temporary_iam_user_deleted",
+      "status": "pass"
+    },
+    {
+      "name": "temporary_iam_policy_deleted",
+      "status": "pass"
+    }
+  ]
+}

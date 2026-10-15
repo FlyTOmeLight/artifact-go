@@ -1,0 +1,7 @@
+{
+  "backend": "rustfs",
+  "scope": "deployment/storage rustfs last 10 minutes",
+  "raw_logs_saved": false,
+  "observed_at": "2026-10-14T16:19:50.936347+00:00",
+  "classified_records": []
+}

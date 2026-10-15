@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "status": "fail",
+  "run_id": "f60d8573-303f-4ac1-b569-433dae6b3931",
+  "backend": "juicefs",
+  "bucket": "artifact-contract",
+  "prefix": "artifact-contract/f60d8573-303f-4ac1-b569-433dae6b3931/",
+  "s3_endpoint": "http://127.0.0.1:19010",
+  "sts_endpoint": "http://127.0.0.1:19010",
+  "region": "us-east-1",
+  "finished_at": "2026-10-14T16:02:42.539972+00:00",
+  "deployment_limits": {
+    "grant_seconds": 900,
+    "session_seconds": 3600,
+    "max_file_bytes": 1073741824,
+    "max_files_per_session": 100
+  },
+  "checks": [
+    {
+      "name": "versioning_configuration_group",
+      "status": "fail",
+      "error_code": "NotImplemented"
+    },
+    {
+      "name": "lifecycle_configuration_group",
+      "status": "fail",
+      "error_code": "NotImplemented"
+    },
+    {
+      "name": "cors_configuration_group",
+      "status": "fail",
+      "error_code": "NoSuchCORSConfiguration"
+    },
+    {
+      "name": "multipart_lifecycle_execution",
+      "status": "pending",
+      "reason": "observe actual scheduled reclamation"
+    },
+    {
+      "name": "browser_direct_upload",
+      "status": "pending",
+      "reason": "run from deployment browser origin"
+    },
+    {
+      "name": "single_upload_group",
+      "status": "fail",
+      "error_code": "HTTPError"
+    },
+    {
+      "name": "single_upload_group_http",
+      "status": "fail",
+      "http_status": 403,
+      "storage_error_code": "AccessDenied"
+    },
+    {
+      "name": "multipart_upload_group",
+      "status": "fail",
+      "error_code": "HTTPError"
+    },
+    {
+      "name": "multipart_upload_group_http",
+      "status": "fail",
+      "http_status": 403,
+      "storage_error_code": "AccessDenied"
+    },
+    {
+      "name": "delete_missing_idempotent",
+      "status": "pass"
+    },
+    {
+      "name": "credential_expiration",
+      "status": "pending",
+      "reason": "single upload prerequisite failed"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "single_upload",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "single_trusted_checksum",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "old_grant_cannot_overwrite",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "missing_condition_existing",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "missing_condition_new",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "other_key_denied",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "object_delete_denied",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "bucket_policy_read_denied",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "bucket_policy_modification",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "stream_read",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "stream_early_close",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "stream_cancellation",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "invalid_checksum_denied",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "new_key_positive_control",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_complete",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_trusted_checksum",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_missing_condition_new",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_missing_condition_existing",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_old_grant_cannot_overwrite",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "multipart_abort",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "object_unchanged",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    },
+    {
+      "name": "cors_configuration",
+      "status": "pending",
+      "reason": "prerequisite failed or capability not executed"
+    }
+  ]
+}

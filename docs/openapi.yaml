@@ -1,0 +1,2300 @@
+basePath: /
+definitions:
+  artifactv1.AliasResponse:
+    properties:
+      artifactID:
+        type: string
+      deletedAt:
+        type: string
+      name:
+        type: string
+      revision:
+        type: integer
+      target:
+        $ref: '#/definitions/artifactv1.VersionIdentity'
+    type: object
+  artifactv1.AliasUpdate:
+    properties:
+      expectedRevision:
+        minimum: 0
+        type: integer
+      name:
+        maxLength: 64
+        type: string
+    required:
+    - expectedRevision
+    - name
+    type: object
+  artifactv1.ArtifactResponse:
+    properties:
+      artifactUri:
+        type: string
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      id:
+        type: string
+      initialVersion:
+        type: string
+      name:
+        type: string
+      projectID:
+        type: string
+      retentionPolicy:
+        $ref: '#/definitions/artifactv1.RetentionResponse'
+      state:
+        type: string
+      tenantID:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+      versionScheme:
+        type: string
+    type: object
+  artifactv1.CreateArtifactRequest:
+    properties:
+      initialVersion:
+        maxLength: 64
+        type: string
+      name:
+        example: demo
+        maxLength: 128
+        type: string
+      projectID:
+        maxLength: 64
+        type: string
+      type:
+        example: model
+        maxLength: 64
+        minLength: 1
+        type: string
+      versionScheme:
+        enum:
+        - integer
+        - semver
+        example: integer
+        type: string
+    required:
+    - name
+    - type
+    - versionScheme
+    type: object
+  artifactv1.CreateDraftRequest:
+    properties:
+      annotations:
+        type: object
+      files:
+        items:
+          $ref: '#/definitions/artifactv1.FileReference'
+        type: array
+      payload:
+        type: object
+      requestKey:
+        maxLength: 64
+        type: string
+      sourceVersionID:
+        type: string
+    required:
+    - requestKey
+    type: object
+  artifactv1.CreateVersionRequest:
+    properties:
+      aliases:
+        items:
+          $ref: '#/definitions/artifactv1.AliasUpdate'
+        type: array
+      annotations:
+        type: object
+      bump:
+        enum:
+        - major
+        - minor
+        - patch
+        type: string
+      draftID:
+        type: string
+      expectedDraftRevision:
+        type: integer
+      files:
+        items:
+          $ref: '#/definitions/artifactv1.FileReference'
+        type: array
+      payload:
+        type: object
+      protected:
+        type: boolean
+      requestKey:
+        maxLength: 64
+        type: string
+    required:
+    - requestKey
+    type: object
+  artifactv1.DeleteVersionResponse:
+    properties:
+      artifactID:
+        type: string
+      id:
+        type: string
+      sequence:
+        type: integer
+      state:
+        type: string
+      version:
+        type: string
+      versionUri:
+        type: string
+    type: object
+  artifactv1.DraftDeletedResponse:
+    properties:
+      appliedRevision:
+        type: integer
+      code:
+        description: Code 错误码
+        type: string
+      draft:
+        $ref: '#/definitions/artifactv1.DraftIdentity'
+      message:
+        description: Message 详细错误信息
+        type: string
+      requestId:
+        description: RequestID 请求id，接收到请求的时候由中间件自动注入
+        type: string
+      statusCode:
+        description: StatusCode 状态码，推荐6位数字
+        type: integer
+    type: object
+  artifactv1.DraftIdentity:
+    properties:
+      artifactID:
+        type: string
+      id:
+        type: string
+    type: object
+  artifactv1.DraftResponse:
+    properties:
+      annotations:
+        type: object
+      artifactID:
+        type: string
+      createdAt:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/artifactv1.FileResponse'
+        type: array
+      id:
+        type: string
+      payload:
+        type: object
+      revision:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  artifactv1.DraftSummary:
+    properties:
+      artifactID:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      revision:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  artifactv1.ErrorResponse:
+    properties:
+      code:
+        description: Code 错误码
+        type: string
+      message:
+        description: Message 详细错误信息
+        type: string
+      requestId:
+        description: RequestID 请求id，接收到请求的时候由中间件自动注入
+        type: string
+      statusCode:
+        description: StatusCode 状态码，推荐6位数字
+        type: integer
+    type: object
+  artifactv1.FileChecksum:
+    properties:
+      algorithm:
+        type: string
+      type:
+        type: string
+      value:
+        type: string
+    type: object
+  artifactv1.FileReference:
+    properties:
+      fileID:
+        type: string
+      path:
+        maxLength: 512
+        type: string
+    required:
+    - fileID
+    - path
+    type: object
+  artifactv1.FileResponse:
+    properties:
+      contentType:
+        type: string
+      declaredChecksum:
+        $ref: '#/definitions/artifactv1.FileChecksum'
+      fileID:
+        type: string
+      fileUri:
+        type: string
+      path:
+        type: string
+      size:
+        type: integer
+    type: object
+  artifactv1.ListArtifactsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/artifactv1.ArtifactResponse'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  artifactv1.ListDraftsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/artifactv1.DraftSummary'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  artifactv1.ListVersionsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/artifactv1.VersionResponse'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  artifactv1.PreviewRetentionResponse:
+    properties:
+      blocked:
+        type: boolean
+      blockingReasons:
+        items:
+          type: string
+        type: array
+      calculatedAt:
+        type: string
+      candidates:
+        items:
+          $ref: '#/definitions/artifactv1.RetentionDecision'
+        type: array
+      policyRevision:
+        type: integer
+      retained:
+        items:
+          $ref: '#/definitions/artifactv1.RetentionDecision'
+        type: array
+    type: object
+  artifactv1.PutAliasRequest:
+    properties:
+      expectedRevision:
+        minimum: 0
+        type: integer
+      versionID:
+        type: string
+    required:
+    - expectedRevision
+    - versionID
+    type: object
+  artifactv1.ResolveRequest:
+    properties:
+      uri:
+        type: string
+    required:
+    - uri
+    type: object
+  artifactv1.ResolveResponse:
+    properties:
+      artifact:
+        $ref: '#/definitions/artifactv1.ArtifactResponse'
+      file:
+        $ref: '#/definitions/artifactv1.FileResponse'
+      version:
+        $ref: '#/definitions/artifactv1.VersionResponse'
+    type: object
+  artifactv1.RetentionDecision:
+    properties:
+      reasons:
+        items:
+          type: string
+        type: array
+      version:
+        $ref: '#/definitions/artifactv1.VersionIdentity'
+    type: object
+  artifactv1.RetentionResponse:
+    properties:
+      artifactID:
+        type: string
+      enabled:
+        type: boolean
+      maxAgeSeconds:
+        type: integer
+      maxVersions:
+        type: integer
+      minVersions:
+        type: integer
+      overflowAction:
+        type: string
+      protectAliases:
+        type: boolean
+      revision:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  artifactv1.UpdateAnnotationsRequest:
+    properties:
+      annotations:
+        type: object
+      expectedRevision:
+        minimum: 0
+        type: integer
+    required:
+    - annotations
+    - expectedRevision
+    type: object
+  artifactv1.UpdateDraftRequest:
+    properties:
+      annotations:
+        type: object
+      expectedRevision:
+        type: integer
+      files:
+        items:
+          $ref: '#/definitions/artifactv1.FileReference'
+        type: array
+      payload:
+        type: object
+      requestKey:
+        maxLength: 64
+        type: string
+    required:
+    - expectedRevision
+    - requestKey
+    type: object
+  artifactv1.UpdateDraftResponse:
+    properties:
+      appliedRevision:
+        type: integer
+      draft:
+        $ref: '#/definitions/artifactv1.DraftResponse'
+    type: object
+  artifactv1.UpdateProtectionRequest:
+    properties:
+      expectedRevision:
+        minimum: 0
+        type: integer
+      protected:
+        type: boolean
+    required:
+    - expectedRevision
+    - protected
+    type: object
+  artifactv1.UpdateRetentionRequest:
+    properties:
+      enabled:
+        type: boolean
+      expectedRevision:
+        minimum: 0
+        type: integer
+      maxAgeSeconds:
+        type: integer
+      maxVersions:
+        type: integer
+      minVersions:
+        minimum: 0
+        type: integer
+      overflowAction:
+        enum:
+        - reject
+        - deleteOldest
+        type: string
+      protectAliases:
+        type: boolean
+    required:
+    - enabled
+    - expectedRevision
+    - minVersions
+    - overflowAction
+    - protectAliases
+    type: object
+  artifactv1.VersionDeletedResponse:
+    properties:
+      code:
+        description: Code 错误码
+        type: string
+      message:
+        description: Message 详细错误信息
+        type: string
+      requestId:
+        description: RequestID 请求id，接收到请求的时候由中间件自动注入
+        type: string
+      statusCode:
+        description: StatusCode 状态码，推荐6位数字
+        type: integer
+      version:
+        $ref: '#/definitions/artifactv1.VersionIdentity'
+    type: object
+  artifactv1.VersionIdentity:
+    properties:
+      artifactID:
+        type: string
+      id:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+      versionUri:
+        type: string
+    type: object
+  artifactv1.VersionResponse:
+    properties:
+      annotations:
+        type: object
+      artifactID:
+        type: string
+      createdBy:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/artifactv1.FileResponse'
+        type: array
+      id:
+        type: string
+      payload:
+        type: object
+      protected:
+        type: boolean
+      publishedAt:
+        type: string
+      revision:
+        type: integer
+      sequence:
+        type: integer
+      state:
+        type: string
+      version:
+        type: string
+      versionUri:
+        type: string
+    type: object
+  errors.Error:
+    properties:
+      code:
+        description: Code 错误码
+        type: string
+      message:
+        description: Message 详细错误信息
+        type: string
+      requestId:
+        description: RequestID 请求id，接收到请求的时候由中间件自动注入
+        type: string
+      statusCode:
+        description: StatusCode 状态码，推荐6位数字
+        type: integer
+    type: object
+  storagev1.CompleteFileResult:
+    properties:
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      declaredChecksum:
+        $ref: '#/definitions/storagev1.FileChecksum'
+      error:
+        $ref: '#/definitions/storagev1.FileError'
+      expectedSize:
+        type: integer
+      expiresAt:
+        type: string
+      fileID:
+        type: string
+      size:
+        type: integer
+      state:
+        type: string
+    type: object
+  storagev1.CreateGrantRequest:
+    properties:
+      fileIDs:
+        items:
+          type: string
+        maxItems: 1000
+        minItems: 1
+        type: array
+      scope:
+        $ref: '#/definitions/storagev1.GrantScope'
+      ttlSeconds:
+        type: integer
+    required:
+    - fileIDs
+    type: object
+  storagev1.CreateTenantBucketRequest:
+    properties:
+      tenantID:
+        type: string
+    required:
+    - tenantID
+    type: object
+  storagev1.FileChecksum:
+    properties:
+      algorithm:
+        type: string
+      type:
+        type: string
+      value:
+        type: string
+    type: object
+  storagev1.FileError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+  storagev1.FileResponse:
+    properties:
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      declaredChecksum:
+        $ref: '#/definitions/storagev1.FileChecksum'
+      expectedSize:
+        type: integer
+      expiresAt:
+        type: string
+      fileID:
+        type: string
+      size:
+        type: integer
+      state:
+        type: string
+    type: object
+  storagev1.GrantCredentials:
+    properties:
+      accessKeyID:
+        type: string
+      secretAccessKey:
+        type: string
+      sessionToken:
+        type: string
+    type: object
+  storagev1.GrantFile:
+    properties:
+      bucket:
+        type: string
+      fileID:
+        type: string
+      objectKey:
+        type: string
+    type: object
+  storagev1.GrantResponse:
+    properties:
+      actions:
+        items:
+          type: string
+        type: array
+      credentials:
+        $ref: '#/definitions/storagev1.GrantCredentials'
+      endpoint:
+        type: string
+      expiresAt:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/storagev1.GrantFile'
+        type: array
+      forcePathStyle:
+        type: boolean
+      region:
+        type: string
+    type: object
+  storagev1.GrantScope:
+    properties:
+      actions:
+        items:
+          type: string
+        type: array
+      preset:
+        type: string
+    type: object
+  storagev1.RegisterFileItem:
+    properties:
+      contentType:
+        type: string
+      declaredChecksum:
+        $ref: '#/definitions/storagev1.FileChecksum'
+      requestKey:
+        type: string
+      size:
+        type: integer
+    type: object
+  storagev1.RegisterFileResult:
+    properties:
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      declaredChecksum:
+        $ref: '#/definitions/storagev1.FileChecksum'
+      error:
+        $ref: '#/definitions/storagev1.FileError'
+      expectedSize:
+        type: integer
+      expiresAt:
+        type: string
+      fileID:
+        type: string
+      requestKey:
+        type: string
+      size:
+        type: integer
+      state:
+        type: string
+    type: object
+  storagev1.TenantBucketResponse:
+    properties:
+      backendID:
+        type: string
+      bucket:
+        type: string
+      tenantID:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Collections, JSON versions and drafts, aliases, conditional management
+    and retention. Scope headers select a scope verified by the injected identity
+    resolver.
+  title: Artifact API
+  version: 0.1.0
+paths:
+  /v1/artifacts:
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection; omit for tenant scope
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Artifact type
+        in: query
+        name: type
+        type: string
+      - description: State
+        enum:
+        - active
+        - archived
+        in: query
+        name: state
+        type: string
+      - description: Query-bound cursor
+        in: query
+        name: cursor
+        type: string
+      - default: 50
+        description: Page size
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ListArtifactsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List collections in the exact request scope
+      tags:
+      - artifacts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection; omit for tenant scope
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Collection
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.CreateArtifactRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/artifactv1.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an artifact collection
+      tags:
+      - artifacts
+  /v1/artifacts/{artifactID}:
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection; omit for tenant scope
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Read a collection, including archived collections
+      tags:
+      - artifacts
+  /v1/artifacts/{artifactID}/aliases/{name}:
+    delete:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Alias name; latest is read-only
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Current alias revision
+        in: query
+        minimum: 0
+        name: expectedRevision
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.AliasResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Conditionally delete an alias and retain its revision tombstone
+      tags:
+      - aliases
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Alias name
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: false
+        description: Include alias tombstone
+        in: query
+        name: includeDeleted
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.AliasResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Read an alias or the current latest ready version
+      tags:
+      - aliases
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Alias name; latest is read-only
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Target and current alias revision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.PutAliasRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.AliasResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Conditionally create, move or restore an alias
+      tags:
+      - aliases
+  /v1/artifacts/{artifactID}/archive:
+    post:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection; omit for tenant scope
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ArtifactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Archive a collection while retaining its identity
+      tags:
+      - artifacts
+  /v1/artifacts/{artifactID}/drafts:
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Query-bound cursor
+        in: query
+        name: cursor
+        type: string
+      - default: 50
+        description: Page size
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ListDraftsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List draft summaries by ascending ID
+      tags:
+      - drafts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Direct JSON and files or source version
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.CreateDraftRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.DraftResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/artifactv1.DraftResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "410":
+          description: Gone
+          schema:
+            $ref: '#/definitions/artifactv1.DraftDeletedResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an independent JSON and file draft or replay its creation
+      tags:
+      - drafts
+  /v1/artifacts/{artifactID}/drafts/{draftID}:
+    delete:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Draft ID
+        in: path
+        name: draftID
+        required: true
+        type: string
+      - description: Current draft revision
+        in: query
+        minimum: 1
+        name: expectedRevision
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a draft while retaining successful request identities
+      tags:
+      - drafts
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Draft ID
+        in: path
+        name: draftID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.DraftResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Read one consistent draft snapshot
+      tags:
+      - drafts
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Draft ID
+        in: path
+        name: draftID
+        required: true
+        type: string
+      - description: Complete snapshot and expected revision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.UpdateDraftRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.UpdateDraftResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "410":
+          description: Gone
+          schema:
+            $ref: '#/definitions/artifactv1.DraftDeletedResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace a draft snapshot with revision checking and replay receipt
+      tags:
+      - drafts
+  /v1/artifacts/{artifactID}/retention-policy:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Complete policy; maxVersions and maxAgeSeconds must be present
+          and may be null
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.UpdateRetentionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.RetentionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace the retention policy using its current revision
+      tags:
+      - retention
+  /v1/artifacts/{artifactID}/retention-policy/preview:
+    post:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.PreviewRetentionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview retention candidates without changing resources
+      tags:
+      - retention
+  /v1/artifacts/{artifactID}/versions:
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Exact published version number
+        in: query
+        name: number
+        type: string
+      - description: Query-bound cursor
+        in: query
+        name: cursor
+        type: string
+      - default: 50
+        description: Page size
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ListVersionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List ready versions in descending sequence order
+      tags:
+      - versions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Publish JSON and a complete file manifest directly or from a
+          draft revision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.CreateVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.VersionResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/artifactv1.VersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "410":
+          description: Gone
+          schema:
+            $ref: '#/definitions/artifactv1.VersionDeletedResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Publish JSON and files directly or from a specified draft revision
+      tags:
+      - versions
+  /v1/artifacts/{artifactID}/versions/{versionID}:
+    delete:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Version ID
+        in: path
+        name: versionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.DeleteVersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a version and retain its identity tombstone
+      tags:
+      - versions
+    get:
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Version ID
+        in: path
+        name: versionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.VersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Read a ready version
+      tags:
+      - versions
+  /v1/artifacts/{artifactID}/versions/{versionID}/annotations:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Version ID
+        in: path
+        name: versionID
+        required: true
+        type: string
+      - description: Complete annotations and expected revision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.UpdateAnnotationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.VersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace version annotations with revision checking
+      tags:
+      - versions
+  /v1/artifacts/{artifactID}/versions/{versionID}/protection:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Artifact ID
+        in: path
+        name: artifactID
+        required: true
+        type: string
+      - description: Version ID
+        in: path
+        name: versionID
+        required: true
+        type: string
+      - description: Explicit protection and expected revision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.UpdateProtectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.VersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set version protection with revision checking
+      tags:
+      - versions
+  /v1/resolve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Request correlation ID
+        in: header
+        name: X-Request-ID
+        type: string
+      - description: Persistent URI
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/artifactv1.ResolveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifactv1.ResolveResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resolve an artifact URI to visible business metadata
+      tags:
+      - resolve
+  /v1/storage/files:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Trusted tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Trusted project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: File declarations
+        in: body
+        name: request
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/storagev1.RegisterFileItem'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/storagev1.RegisterFileResult'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - BearerAuth: []
+      summary: Register a batch of files for direct upload
+      tags:
+      - storage
+  /v1/storage/files/{fileID}:
+    delete:
+      parameters:
+      - description: Trusted tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Trusted project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: File ID
+        in: path
+        name: fileID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/storagev1.FileResponse'
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/storagev1.FileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - BearerAuth: []
+      summary: Request reclamation of an unreferenced file
+      tags:
+      - storage
+    get:
+      parameters:
+      - description: Trusted tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Trusted project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: File ID
+        in: path
+        name: fileID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/storagev1.FileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - BearerAuth: []
+      summary: Read file status in the exact scope
+      tags:
+      - storage
+  /v1/storage/files/complete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Trusted tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Trusted project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: File IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/storagev1.CompleteFileResult'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - BearerAuth: []
+      summary: Confirm uploaded objects in input order
+      tags:
+      - storage
+  /v1/storage/grants:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Trusted tenant scope selection
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Trusted project scope selection
+        in: header
+        name: X-Project-ID
+        type: string
+      - description: Files and requested S3 actions
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/storagev1.CreateGrantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/storagev1.GrantResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - BearerAuth: []
+      summary: Issue one exact-key S3 grant for a file batch
+      tags:
+      - storage
+  /v1/storage/tenant-buckets:
+    post:
+      consumes:
+      - application/json
+      description: Requires the injected tenant-service verifier; user scope headers
+        are not management credentials.
+      parameters:
+      - description: Tenant identity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/storagev1.CreateTenantBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/storagev1.TenantBucketResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/storagev1.TenantBucketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errors.Error'
+      security:
+      - TenantServiceAuth: []
+      summary: Prepare the tenant's fixed storage bucket
+      tags:
+      - storage
+securityDefinitions:
+  BearerAuth:
+    description: Bearer user token; scope headers are not identity proof.
+    in: header
+    name: Authorization
+    type: apiKey
+  TenantServiceAuth:
+    description: Trusted tenant-system credential, checked by the injected TenantServiceVerifier.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

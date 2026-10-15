@@ -1,0 +1,172 @@
+{
+  "run": "t00-ba608136bda1",
+  "backend": "JuiceFS 1.4.1",
+  "endpoint": "http://127.0.0.1:19010",
+  "updated_at": "2026-10-14T23:26:18.124540+00:00",
+  "checks": [
+    {
+      "name": "root_list_buckets",
+      "status": "pass"
+    },
+    {
+      "name": "temporary_iam_create",
+      "status": "pass"
+    },
+    {
+      "name": "temporary_iam_policy",
+      "status": "pass"
+    },
+    {
+      "name": "ordinary_iam_upload_sts",
+      "status": "pass",
+      "expires_at": "2026-10-14T23:26:15+00:00"
+    },
+    {
+      "name": "multi_key_put_one",
+      "status": "pass"
+    },
+    {
+      "name": "multi_key_put_two",
+      "status": "pass"
+    },
+    {
+      "name": "outside_key_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "other_bucket_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "delete_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "upload_get_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "multipart_list_multipart",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_complete",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_list_orphan",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_abort",
+      "status": "pass"
+    },
+    {
+      "name": "download_get",
+      "status": "pass"
+    },
+    {
+      "name": "download_range",
+      "status": "pass"
+    },
+    {
+      "name": "download_head",
+      "status": "pass"
+    },
+    {
+      "name": "download_put_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "custom_put",
+      "status": "pass"
+    },
+    {
+      "name": "custom_abort_denied",
+      "status": "pass",
+      "error_code": "AccessDenied"
+    },
+    {
+      "name": "expiration_wait_started",
+      "status": "pending",
+      "expires_at": "2026-10-14T23:26:15+00:00"
+    },
+    {
+      "name": "expired_sts_put_denied",
+      "status": "fail",
+      "error_code": "InvalidAccessKeyId"
+    },
+    {
+      "name": "service_put",
+      "status": "pass"
+    },
+    {
+      "name": "cors_preflight",
+      "status": "pass",
+      "headers": {
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Headers": "Authorization, X-Amz-Date, X-Amz-Security-Token, X-Amz-Content-Sha256, Content-Type",
+        "Access-Control-Allow-Methods": "PUT",
+        "Access-Control-Allow-Origin": "http://localhost:3000"
+      }
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "cleanup_delete",
+      "status": "pass"
+    },
+    {
+      "name": "delete_head_absent",
+      "status": "pass",
+      "note": "S3 absence only; trash-days=1 prevents immediate physical-space claim"
+    },
+    {
+      "name": "temporary_iam_deleted",
+      "status": "pass"
+    },
+    {
+      "name": "temporary_policy_deleted",
+      "status": "pass"
+    }
+  ]
+}

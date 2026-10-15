@@ -1,0 +1,92 @@
+AppName = "artifact-go"
+AppCode = 100
+RunMode = "release"
+
+[HTTPServer]
+# Enable only behind an operations-only ingress for /metrics.
+MetricsEnable = false
+Listen = "${env: ARTIFACT_LISTEN:127.0.0.1:18080}"
+ReadTimeout = 10000
+WriteTimeout = 10000
+IdleTimeout = 60000
+
+[DB]
+Driver = "PostgreSQL"
+DSN = "${env: ARTIFACT_DATABASE_URL}"
+MaxIdleConns = 5
+MaxOpenConns = 10
+ConnMaxIdleTime = 60
+ConnMaxLifeTime = 300
+AutoMigrate = false
+
+[Version]
+MaxFilesPerVersion = 1000
+MaxPayloadBytes = 262144
+MaxAnnotationsBytes = 65536
+MaxRequestBodyBytes = 8388608
+
+[Worker]
+Concurrency = 2
+ScanInterval = "5s"
+LeaseDuration = "60s"
+RenewInterval = "15s"
+MaxFailures = 20
+
+# Enable only with service.BuildWithVerifiers and a trusted tenant-system verifier.
+# [Storage]
+# BackendID = "juicefs-local"
+# Endpoint = "${env: ARTIFACT_STORAGE_ENDPOINT}"
+# Region = "us-east-1"
+# AccessKeyID = "${env: ARTIFACT_STORAGE_ACCESS_KEY_ID}"
+# SecretAccessKey = "${env: ARTIFACT_STORAGE_SECRET_ACCESS_KEY}"
+# UsePathStyle = true
+
+# Add StorageDB to enable the storage file module with its own connection pool.
+# Omit DB and use BuildStorageWithVerifiers for a storage-only process.
+# [StorageDB]
+# Driver = "PostgreSQL"
+# DSN = "${env: ARTIFACT_STORAGE_DATABASE_URL}"
+# MaxIdleConns = 5
+# MaxOpenConns = 10
+# AutoMigrate = false
+# [StorageFiles]
+# MaxFileBytes = 1073741824
+# TemporaryFileTTL = "24h"
+# MaxRequestBodyBytes = 8388608
+# [StorageWorker]
+# Concurrency = 2
+# ScanInterval = "5s"
+# LeaseDuration = "60s"
+# RenewInterval = "15s"
+# SweepInterval = "1h"
+# MaxFailures = 20
+
+# Enable grants only with a dedicated ordinary IAM issuer whose base policy
+# covers the intended tenant buckets; the session policy restricts each grant.
+# Never reuse the bucket-administration/root key here.
+# [Storage.GrantIssuer]
+# Endpoint = "${env: ARTIFACT_STORAGE_STS_ENDPOINT}"
+# AccessKeyID = "${env: ARTIFACT_STORAGE_STS_ACCESS_KEY_ID}"
+# SecretAccessKey = "${env: ARTIFACT_STORAGE_STS_SECRET_ACCESS_KEY}"
+# [StorageGrants]
+# UploadTTL = "1h"
+# ReadTTL = "1h"
+# AllowedActions = ["s3:PutObject", "s3:GetObject", "s3:ListMultipartUploadParts", "s3:AbortMultipartUpload"]
+
+# T09: artifact -> storage authenticated HTTP/JSON handoff.
+# Use a separate service token; do not reuse the tenant administration identity.
+# [StorageHandoff]
+# Endpoint = "http://127.0.0.1:18081" # loopback development only; otherwise HTTPS
+# Token = "${env:ARTIFACT_STORAGE_CONSUMER_TOKEN}"
+#
+# Storage-only and combined services own this separate internal listener.
+# [StorageInternal]
+# ListenAddress = "127.0.0.1:18081"
+# CertFile = "" # mandatory with KeyFile outside literal loopback
+# KeyFile = ""
+# [[StorageInternal.Consumers]]
+# ID = "artifact" # stable through token rotation and process restarts
+# Tokens = ["${env:ARTIFACT_STORAGE_CONSUMER_TOKEN}"]
+# [[StorageInternal.Consumers.Scopes]]
+# TenantID = "t_000000000000000000000001"
+# ProjectID omitted means exactly the tenant scope, never every project.

@@ -1,0 +1,37 @@
+# storage 拥有文件生命周期，artifact 拥有版本清单
+
+日期：2026-10-15。状态：按用户确认纳入首期设计，尚未实现。
+
+## 背景
+
+原设计把上传会话、文件登记、凭证、确认、封存及下载流都放在 artifact。用户指出这让版本服务承担了通用存储流程，且上传、下载并不需要对称的会话资源。storage 尚未独立部署，当前仍由 artifact-go 进程承载。
+
+## 决定
+
+storage 拥有独立文件 API、storagev1 SDK、文件和任务表、协议 adapter 与回收 worker；artifact 拥有 JSON、草稿、版本、逻辑路径清单、可见性与保留规则。去掉上传会话和 seal；调用方先准备 storage 文件，再提交 path/FileID 清单发布。统一 POST /v1/storage/grants 完整归storage，按可信租户/项目与文件状态独立授权，上传、下载、自定义Actions和续发均返回同一种限权STS，不建立download-session或代理流。
+
+首期即采用独立事务的引用交接协议，即使同进程同数据库也不跨域传tx。artifact先持久记录ReferenceChange与完整新增引用计划，再调用storage.BindReferences独立提交持有关系；最后artifact本地事务重验当前attempt、来源Revision和业务约束，提交JSON/清单/编号/alias/成功回执、committed决策以及旧引用释放任务。只允许暂时多保留文件，不允许业务成功却没有持有关系。
+
+StorageReference以(ConsumerID,ReferenceID)唯一，固定关联FileID和可信精确scope。ConsumerID来自服务身份；业务owner的映射和内部ReferenceID由DraftFile/VersionFile保存。ReferenceID一次生命周期，released永不复活；首期墓碑不自动清理、不设TTL，即使FileID deleted也保留以提供稳定查询回执；移除再加入或失败重试使用新ID。storage只识别consumer、引用和文件，不查询artifact表。FileID和实际key永不复用。
+
+草稿JSON与清单共用Revision；未变文件或只改path沿用引用，从版本创建草稿和发布草稿各自新增引用，不复制字节，不转移来源引用。草稿PUT增加requestKey及appliedRevision回执；成功重试返回原appliedRevision和当前完整一致快照，已删除返回携带原身份及appliedRevision的DraftDeleted。RequestInProgress和OperationOutcomeUnknown要求原键核对，与确定的RevisionConflict区分。
+
+storage可信内部契约为BindReferences、ReleaseReferences、GetReferenceStatuses，均自持事务。单批原子，多批失败由完整持久计划补偿。Release先到也记录released墓碑，迟到Bind拒绝；不存在引用的Release不直接删除准备文件。非最后引用释放永久完成；最后引用将文件转deleting并写storage任务，版本收尾等待物理Delete回执。
+
+ReferenceChange按(ArtifactID,ActorID,OperationKind,RequestKey)串行当前attempt，先持久计划再Bind。commit/abort竞争同一记录，旧attempt不能提交。中止与完整不可变补偿任务同artifact事务提交，任务按Kind+AttemptID（删除用独立交接ID）去重，不能被新attempt覆盖。worker仅中止到期preparing和发送Release，不代替用户继续保存/发布，不持久保存大JSON重放副本。所有计划新引用的失败补偿均不早于原准备ExpiresAt，不能因未收到Bind成功或查询absent提前释放；成功引用没有TTL。最终提交结果不明查权威主库，主库不可读期间保留引用。
+
+删除草稿或逻辑删除版本时，artifact本地事务记录完整旧引用释放任务，不同步等待storage。草稿204表示业务删除与释放义务已持久；worker可靠释放，失败重试，不能丢弃任务。版本按自身ReferenceID释放结果收尾，非最后引用无须等待其他持有者。集合归档或归属删除后，可信历史作用域仍可按Revision删除草稿。无新增引用时省略准备查询与Bind，业务回执及必要释放任务仍保持相同本地提交语义。
+
+bound不按上传期限过期，普通storage删除不能删除仍有引用的文件。最后释放后不退回ready且禁止复活。旧上传凭证自然到期，回收等待其保守期限；storage保留位置墓碑处理迟到写入。读取凭证不形成保留义务，也不延长ready的准备期限。删除版本或草稿只隐藏自身内容并释放自身引用；文件仍由其他持有关系持有时，同作用域内已知FileID的调用方仍可申请新读授权。发布固定JSON与清单，外部字节修改仍由客户端负责，包括其对所有复用者的影响。
+
+登记和确认请求及200响应直接使用顶层数组：登记为对象数组，确认为FileID字符串数组，结果为同序逐项结果数组，不包files/fileIDs/data；整请求失败仍为标准错误对象。登记每项requestKey去重；grant单独接受一批fileIDs及相同scope，整批一份STS，失败不返回部分凭证。scope二选一为upload/download预设或显式S3 Actions，不另造能力名称；文件夹仍展开精确key，不扩大成目录权限。请求只含fileIDs、scope与可选ttlSeconds，不包含业务来源。读取允许未过期ready文件和仍被引用的bound文件，无需先保存草稿或发布版本；不读取artifact表，也不反调业务服务或要求业务授权票据。storage自持授权短事务，锁全部StorageFile后在事务外签发。注册与首次授权保持分离，不再保留场景专用授权端点。
+
+## 取舍与独立部署验收
+
+业务状态、Revision、编号和成功回执仍在artifact本地原子，storage引用不随本地失败回滚，由持久任务恢复释放。释放任务尚未送达时文件可能仍bound且同scope可读；逻辑删除不承诺立即撤权。以暂时多保留空间换取不误删已提交文件，不引入分布式事务协调器或消息中间件。
+
+首期就验收至少一组artifact/storage两个服务进程和两个独立数据库，覆盖先Release后Bind、丢响应、部分批次、commit/abort竞争、旧attempt、CAS附件保留窗口、删除任务丢失防护及storage不可用。artifact-only装配仅需artifactDB与可信storage交接客户端；storage-only仅需storageDB、S3及consumer身份验证；combined才组合两域资源。日后拆服务保持成功与恢复规则，只替换可信传输和装配并核验身份、网络及运维。完整协议见[引用交接设计](../storage-reference-handoff-design-20261015.md)。
+
+本决定更新 ADR 0001 的职责归属，延续其客户端直传、S3、客户端负责外部字节等决定；ADR 0002 的租户 bucket 创建归属不变。详细状态、锁顺序、期限与验收见技术设计和代码结构设计。
+
+2026-10-15 契约补充：草稿创建以独立DraftCreateRequest去重；GetDraft通过与写入协调的短事务读取JSON/Revision/清单。超内联上限的JSON由客户端显式作为普通文件保存，不透明转存或回读；大小与STS精确权限以技术设计为准。

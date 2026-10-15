@@ -1,0 +1,182 @@
+{
+  "schema_version": 2,
+  "contract": "tenant-bucket-client-managed-content",
+  "status": "fail",
+  "run_id": "2ca72947-bbd9-4c0e-85f0-25bf545f01c6",
+  "backend": "juicefs",
+  "service_only": true,
+  "bucket": "artifact-data",
+  "other_tenant_bucket": "artifact-models",
+  "prefix": "artifact-contract/2ca72947-bbd9-4c0e-85f0-25bf545f01c6/",
+  "s3_endpoint": "http://127.0.0.1:19010",
+  "sts_endpoint": "http://127.0.0.1:19010",
+  "region": "us-east-1",
+  "finished_at": "2026-10-14T17:01:26.556905+00:00",
+  "deployment_limits": {
+    "grant_seconds": 900,
+    "session_seconds": 3600,
+    "max_file_bytes": 1073741824,
+    "max_files_per_session": 100
+  },
+  "checks": [
+    {
+      "name": "versioning_configuration_group",
+      "status": "fail",
+      "error_code": "NotImplemented"
+    },
+    {
+      "name": "lifecycle_configuration_group",
+      "status": "fail",
+      "error_code": "NotImplemented"
+    },
+    {
+      "name": "cors_configuration",
+      "status": "pending",
+      "reason": "supply --origin for browser deployment"
+    },
+    {
+      "name": "multipart_lifecycle_execution",
+      "status": "pending",
+      "reason": "observe actual scheduled reclamation"
+    },
+    {
+      "name": "browser_direct_upload",
+      "status": "pending",
+      "reason": "run from deployment browser origin"
+    },
+    {
+      "name": "other_tenant_bucket_denied",
+      "status": "pending",
+      "reason": "requires --other-tenant-bucket and restricted STS credentials"
+    },
+    {
+      "name": "grant_deadline",
+      "status": "pending",
+      "reason": "service-only mode; STS not used"
+    },
+    {
+      "name": "single_upload",
+      "status": "pass"
+    },
+    {
+      "name": "single_trusted_checksum",
+      "status": "fail",
+      "size": 34,
+      "checksum_sha256": null,
+      "checksum_type": null
+    },
+    {
+      "name": "other_key_denied",
+      "status": "pending",
+      "reason": "service-only mode cannot prove temporary credential isolation"
+    },
+    {
+      "name": "object_delete_denied",
+      "status": "pending",
+      "reason": "service-only mode cannot prove temporary credential isolation"
+    },
+    {
+      "name": "bucket_policy_read_denied",
+      "status": "pending",
+      "reason": "service-only mode cannot prove temporary credential isolation"
+    },
+    {
+      "name": "bucket_policy_modification",
+      "status": "pending",
+      "reason": "session policy grants no bucket actions; no remote policy mutation attempted"
+    },
+    {
+      "name": "stream_read",
+      "status": "pass"
+    },
+    {
+      "name": "stream_early_close",
+      "status": "pass"
+    },
+    {
+      "name": "stream_cancellation",
+      "status": "pending",
+      "reason": "Go adapter context cancellation requires adapter test"
+    },
+    {
+      "name": "grant_deadline",
+      "status": "pending",
+      "reason": "service-only mode; STS not used"
+    },
+    {
+      "name": "invalid_checksum_denied",
+      "status": "fail",
+      "reason": "unexpected_success"
+    },
+    {
+      "name": "grant_deadline",
+      "status": "pending",
+      "reason": "service-only mode; STS not used"
+    },
+    {
+      "name": "multipart_part_1",
+      "status": "fail",
+      "returned_checksum": null
+    },
+    {
+      "name": "multipart_part_2",
+      "status": "fail",
+      "returned_checksum": null
+    },
+    {
+      "name": "list_parts",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_complete",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_trusted_checksum",
+      "status": "fail",
+      "size": 5242908,
+      "checksum_sha256": null,
+      "checksum_type": null
+    },
+    {
+      "name": "multipart_abort",
+      "status": "pass"
+    },
+    {
+      "name": "multipart_abort_preserves_object",
+      "status": "fail",
+      "size": 5242908,
+      "checksum_sha256": null,
+      "checksum_type": null
+    },
+    {
+      "name": "delete_missing_idempotent",
+      "status": "pass"
+    },
+    {
+      "name": "credential_expiration",
+      "status": "pending",
+      "reason": "service-only mode; STS not used"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    },
+    {
+      "name": "cleanup_object_absent",
+      "status": "pass",
+      "error_code": "404"
+    }
+  ]
+}

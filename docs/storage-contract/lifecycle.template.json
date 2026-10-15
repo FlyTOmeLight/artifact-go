@@ -1,0 +1,10 @@
+{
+  "Rules": [
+    {
+      "ID": "abort-incomplete-artifact-uploads",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "REPLACE_PREFIX/"},
+      "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 1}
+    }
+  ]
+}

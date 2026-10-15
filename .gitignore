@@ -1,0 +1,17 @@
+.codegraph/
+.scratch/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.aws/
+.DS_Store
+/bin/
+/coverage.out
+/logs/
+*.log
+
+# Domain context is part of this repository, even when globally ignored.
+!/CONTEXT.md

@@ -1,0 +1,10 @@
+**
+!go.mod
+!go.sum
+!cmd/**
+!internal/**
+!sdk/**
+!service/**
+!conf/**
+!deploy/artifact/Dockerfile
+!deploy/artifact/Dockerfile.dockerignore

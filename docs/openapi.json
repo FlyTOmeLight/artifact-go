@@ -1,0 +1,3491 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Collections, JSON versions and drafts, aliases, conditional management and retention. Scope headers select a scope verified by the injected identity resolver.",
+        "title": "Artifact API",
+        "contact": {},
+        "version": "0.1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/v1/artifacts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "List collections in the exact request scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection; omit for tenant scope",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "active",
+                            "archived"
+                        ],
+                        "type": "string",
+                        "description": "State",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query-bound cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ListArtifactsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Create an artifact collection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection; omit for tenant scope",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Collection",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.CreateArtifactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ArtifactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Read a collection, including archived collections",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection; omit for tenant scope",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ArtifactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/aliases/{name}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aliases"
+                ],
+                "summary": "Read an alias or the current latest ready version",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alias name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Include alias tombstone",
+                        "name": "includeDeleted",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.AliasResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aliases"
+                ],
+                "summary": "Conditionally create, move or restore an alias",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alias name; latest is read-only",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target and current alias revision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.PutAliasRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.AliasResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aliases"
+                ],
+                "summary": "Conditionally delete an alias and retain its revision tombstone",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alias name; latest is read-only",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "description": "Current alias revision",
+                        "name": "expectedRevision",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.AliasResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/archive": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "artifacts"
+                ],
+                "summary": "Archive a collection while retaining its identity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection; omit for tenant scope",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ArtifactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/drafts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drafts"
+                ],
+                "summary": "List draft summaries by ascending ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query-bound cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ListDraftsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drafts"
+                ],
+                "summary": "Create an independent JSON and file draft or replay its creation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Direct JSON and files or source version",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.CreateDraftRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DraftResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DraftResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Gone",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DraftDeletedResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/drafts/{draftID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drafts"
+                ],
+                "summary": "Read one consistent draft snapshot",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Draft ID",
+                        "name": "draftID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DraftResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drafts"
+                ],
+                "summary": "Replace a draft snapshot with revision checking and replay receipt",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Draft ID",
+                        "name": "draftID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Complete snapshot and expected revision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.UpdateDraftRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.UpdateDraftResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Gone",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DraftDeletedResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "drafts"
+                ],
+                "summary": "Delete a draft while retaining successful request identities",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Draft ID",
+                        "name": "draftID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Current draft revision",
+                        "name": "expectedRevision",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/retention-policy": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "retention"
+                ],
+                "summary": "Replace the retention policy using its current revision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Complete policy; maxVersions and maxAgeSeconds must be present and may be null",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.UpdateRetentionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.RetentionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/retention-policy/preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "retention"
+                ],
+                "summary": "Preview retention candidates without changing resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.PreviewRetentionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/versions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "List ready versions in descending sequence order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact published version number",
+                        "name": "number",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query-bound cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ListVersionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "Publish JSON and files directly or from a specified draft revision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Publish JSON and a complete file manifest directly or from a draft revision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.CreateVersionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Gone",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionDeletedResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/versions/{versionID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "Read a ready version",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version ID",
+                        "name": "versionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "Delete a version and retain its identity tombstone",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version ID",
+                        "name": "versionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.DeleteVersionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/versions/{versionID}/annotations": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "Replace version annotations with revision checking",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version ID",
+                        "name": "versionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Complete annotations and expected revision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.UpdateAnnotationsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/artifacts/{artifactID}/versions/{versionID}/protection": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "versions"
+                ],
+                "summary": "Set version protection with revision checking",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Artifact ID",
+                        "name": "artifactID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version ID",
+                        "name": "versionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Explicit protection and expected revision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.UpdateProtectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.VersionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/resolve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resolve"
+                ],
+                "summary": "Resolve an artifact URI to visible business metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Request correlation ID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Persistent URI",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ResolveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ResolveResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/artifactv1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/files": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Register a batch of files for direct upload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trusted project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "File declarations",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/storagev1.RegisterFileItem"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/storagev1.RegisterFileResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/files/complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Confirm uploaded objects in input order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trusted project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "File IDs",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/storagev1.CompleteFileResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/files/{fileID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Read file status in the exact scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trusted project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.FileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Request reclamation of an unreferenced file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trusted project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "fileID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.FileResponse"
+                        }
+                    },
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.FileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/grants": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Issue one exact-key S3 grant for a file batch",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted tenant scope selection",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trusted project scope selection",
+                        "name": "X-Project-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Files and requested S3 actions",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.CreateGrantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.GrantResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/tenant-buckets": {
+            "post": {
+                "security": [
+                    {
+                        "TenantServiceAuth": []
+                    }
+                ],
+                "description": "Requires the injected tenant-service verifier; user scope headers are not management credentials.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Prepare the tenant's fixed storage bucket",
+                "parameters": [
+                    {
+                        "description": "Tenant identity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.CreateTenantBucketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.TenantBucketResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/storagev1.TenantBucketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "artifactv1.AliasResponse": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "target": {
+                    "$ref": "#/definitions/artifactv1.VersionIdentity"
+                }
+            }
+        },
+        "artifactv1.AliasUpdate": {
+            "type": "object",
+            "required": [
+                "expectedRevision",
+                "name"
+            ],
+            "properties": {
+                "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 64
+                }
+            }
+        },
+        "artifactv1.ArtifactResponse": {
+            "type": "object",
+            "properties": {
+                "artifactUri": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "initialVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "projectID": {
+                    "type": "string"
+                },
+                "retentionPolicy": {
+                    "$ref": "#/definitions/artifactv1.RetentionResponse"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "tenantID": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "versionScheme": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.CreateArtifactRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "type",
+                "versionScheme"
+            ],
+            "properties": {
+                "initialVersion": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "example": "demo"
+                },
+                "projectID": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "type": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "example": "model"
+                },
+                "versionScheme": {
+                    "type": "string",
+                    "enum": [
+                        "integer",
+                        "semver"
+                    ],
+                    "example": "integer"
+                }
+            }
+        },
+        "artifactv1.CreateDraftRequest": {
+            "type": "object",
+            "required": [
+                "requestKey"
+            ],
+            "properties": {
+                "annotations": {
+                    "type": "object"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.FileReference"
+                    }
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "requestKey": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "sourceVersionID": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.CreateVersionRequest": {
+            "type": "object",
+            "required": [
+                "requestKey"
+            ],
+            "properties": {
+                "aliases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.AliasUpdate"
+                    }
+                },
+                "annotations": {
+                    "type": "object"
+                },
+                "bump": {
+                    "type": "string",
+                    "enum": [
+                        "major",
+                        "minor",
+                        "patch"
+                    ]
+                },
+                "draftID": {
+                    "type": "string"
+                },
+                "expectedDraftRevision": {
+                    "type": "integer"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.FileReference"
+                    }
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "protected": {
+                    "type": "boolean"
+                },
+                "requestKey": {
+                    "type": "string",
+                    "maxLength": 64
+                }
+            }
+        },
+        "artifactv1.DeleteVersionResponse": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "versionUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.DraftDeletedResponse": {
+            "type": "object",
+            "properties": {
+                "appliedRevision": {
+                    "type": "integer"
+                },
+                "code": {
+                    "description": "Code 错误码",
+                    "type": "string"
+                },
+                "draft": {
+                    "$ref": "#/definitions/artifactv1.DraftIdentity"
+                },
+                "message": {
+                    "description": "Message 详细错误信息",
+                    "type": "string"
+                },
+                "requestId": {
+                    "description": "RequestID 请求id，接收到请求的时候由中间件自动注入",
+                    "type": "string"
+                },
+                "statusCode": {
+                    "description": "StatusCode 状态码，推荐6位数字",
+                    "type": "integer"
+                }
+            }
+        },
+        "artifactv1.DraftIdentity": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.DraftResponse": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object"
+                },
+                "artifactID": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.FileResponse"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.DraftSummary": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code 错误码",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message 详细错误信息",
+                    "type": "string"
+                },
+                "requestId": {
+                    "description": "RequestID 请求id，接收到请求的时候由中间件自动注入",
+                    "type": "string"
+                },
+                "statusCode": {
+                    "description": "StatusCode 状态码，推荐6位数字",
+                    "type": "integer"
+                }
+            }
+        },
+        "artifactv1.FileChecksum": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.FileReference": {
+            "type": "object",
+            "required": [
+                "fileID",
+                "path"
+            ],
+            "properties": {
+                "fileID": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string",
+                    "maxLength": 512
+                }
+            }
+        },
+        "artifactv1.FileResponse": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "declaredChecksum": {
+                    "$ref": "#/definitions/artifactv1.FileChecksum"
+                },
+                "fileID": {
+                    "type": "string"
+                },
+                "fileUri": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "artifactv1.ListArtifactsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.ArtifactResponse"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.ListDraftsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.DraftSummary"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.ListVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.VersionResponse"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.PreviewRetentionResponse": {
+            "type": "object",
+            "properties": {
+                "blocked": {
+                    "type": "boolean"
+                },
+                "blockingReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "calculatedAt": {
+                    "type": "string"
+                },
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.RetentionDecision"
+                    }
+                },
+                "policyRevision": {
+                    "type": "integer"
+                },
+                "retained": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.RetentionDecision"
+                    }
+                }
+            }
+        },
+        "artifactv1.PutAliasRequest": {
+            "type": "object",
+            "required": [
+                "expectedRevision",
+                "versionID"
+            ],
+            "properties": {
+                "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "versionID": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.ResolveRequest": {
+            "type": "object",
+            "required": [
+                "uri"
+            ],
+            "properties": {
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.ResolveResponse": {
+            "type": "object",
+            "properties": {
+                "artifact": {
+                    "$ref": "#/definitions/artifactv1.ArtifactResponse"
+                },
+                "file": {
+                    "$ref": "#/definitions/artifactv1.FileResponse"
+                },
+                "version": {
+                    "$ref": "#/definitions/artifactv1.VersionResponse"
+                }
+            }
+        },
+        "artifactv1.RetentionDecision": {
+            "type": "object",
+            "properties": {
+                "reasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "version": {
+                    "$ref": "#/definitions/artifactv1.VersionIdentity"
+                }
+            }
+        },
+        "artifactv1.RetentionResponse": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "maxAgeSeconds": {
+                    "type": "integer"
+                },
+                "maxVersions": {
+                    "type": "integer"
+                },
+                "minVersions": {
+                    "type": "integer"
+                },
+                "overflowAction": {
+                    "type": "string"
+                },
+                "protectAliases": {
+                    "type": "boolean"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.UpdateAnnotationsRequest": {
+            "type": "object",
+            "required": [
+                "annotations",
+                "expectedRevision"
+            ],
+            "properties": {
+                "annotations": {
+                    "type": "object"
+                },
+                "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "artifactv1.UpdateDraftRequest": {
+            "type": "object",
+            "required": [
+                "expectedRevision",
+                "requestKey"
+            ],
+            "properties": {
+                "annotations": {
+                    "type": "object"
+                },
+                "expectedRevision": {
+                    "type": "integer"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.FileReference"
+                    }
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "requestKey": {
+                    "type": "string",
+                    "maxLength": 64
+                }
+            }
+        },
+        "artifactv1.UpdateDraftResponse": {
+            "type": "object",
+            "properties": {
+                "appliedRevision": {
+                    "type": "integer"
+                },
+                "draft": {
+                    "$ref": "#/definitions/artifactv1.DraftResponse"
+                }
+            }
+        },
+        "artifactv1.UpdateProtectionRequest": {
+            "type": "object",
+            "required": [
+                "expectedRevision",
+                "protected"
+            ],
+            "properties": {
+                "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "protected": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "artifactv1.UpdateRetentionRequest": {
+            "type": "object",
+            "required": [
+                "enabled",
+                "expectedRevision",
+                "minVersions",
+                "overflowAction",
+                "protectAliases"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "maxAgeSeconds": {
+                    "type": "integer"
+                },
+                "maxVersions": {
+                    "type": "integer"
+                },
+                "minVersions": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "overflowAction": {
+                    "type": "string",
+                    "enum": [
+                        "reject",
+                        "deleteOldest"
+                    ]
+                },
+                "protectAliases": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "artifactv1.VersionDeletedResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code 错误码",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message 详细错误信息",
+                    "type": "string"
+                },
+                "requestId": {
+                    "description": "RequestID 请求id，接收到请求的时候由中间件自动注入",
+                    "type": "string"
+                },
+                "statusCode": {
+                    "description": "StatusCode 状态码，推荐6位数字",
+                    "type": "integer"
+                },
+                "version": {
+                    "$ref": "#/definitions/artifactv1.VersionIdentity"
+                }
+            }
+        },
+        "artifactv1.VersionIdentity": {
+            "type": "object",
+            "properties": {
+                "artifactID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "versionUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "artifactv1.VersionResponse": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object"
+                },
+                "artifactID": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/artifactv1.FileResponse"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "protected": {
+                    "type": "boolean"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "versionUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "errors.Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code 错误码",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message 详细错误信息",
+                    "type": "string"
+                },
+                "requestId": {
+                    "description": "RequestID 请求id，接收到请求的时候由中间件自动注入",
+                    "type": "string"
+                },
+                "statusCode": {
+                    "description": "StatusCode 状态码，推荐6位数字",
+                    "type": "integer"
+                }
+            }
+        },
+        "storagev1.CompleteFileResult": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "declaredChecksum": {
+                    "$ref": "#/definitions/storagev1.FileChecksum"
+                },
+                "error": {
+                    "$ref": "#/definitions/storagev1.FileError"
+                },
+                "expectedSize": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fileID": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.CreateGrantRequest": {
+            "type": "object",
+            "required": [
+                "fileIDs"
+            ],
+            "properties": {
+                "fileIDs": {
+                    "type": "array",
+                    "maxItems": 1000,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scope": {
+                    "$ref": "#/definitions/storagev1.GrantScope"
+                },
+                "ttlSeconds": {
+                    "type": "integer"
+                }
+            }
+        },
+        "storagev1.CreateTenantBucketRequest": {
+            "type": "object",
+            "required": [
+                "tenantID"
+            ],
+            "properties": {
+                "tenantID": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.FileChecksum": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.FileError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
+        "storagev1.FileResponse": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "declaredChecksum": {
+                    "$ref": "#/definitions/storagev1.FileChecksum"
+                },
+                "expectedSize": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fileID": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.GrantCredentials": {
+            "type": "object",
+            "properties": {
+                "accessKeyID": {
+                    "type": "string"
+                },
+                "secretAccessKey": {
+                    "type": "string"
+                },
+                "sessionToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.GrantFile": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "fileID": {
+                    "type": "string"
+                },
+                "objectKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.GrantResponse": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "credentials": {
+                    "$ref": "#/definitions/storagev1.GrantCredentials"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/storagev1.GrantFile"
+                    }
+                },
+                "forcePathStyle": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.GrantScope": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preset": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.RegisterFileItem": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "declaredChecksum": {
+                    "$ref": "#/definitions/storagev1.FileChecksum"
+                },
+                "requestKey": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "storagev1.RegisterFileResult": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "declaredChecksum": {
+                    "$ref": "#/definitions/storagev1.FileChecksum"
+                },
+                "error": {
+                    "$ref": "#/definitions/storagev1.FileError"
+                },
+                "expectedSize": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fileID": {
+                    "type": "string"
+                },
+                "requestKey": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "storagev1.TenantBucketResponse": {
+            "type": "object",
+            "properties": {
+                "backendID": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "tenantID": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Bearer user token; scope headers are not identity proof.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "TenantServiceAuth": {
+            "description": "Trusted tenant-system credential, checked by the injected TenantServiceVerifier.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

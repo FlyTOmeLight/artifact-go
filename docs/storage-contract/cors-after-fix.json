@@ -1,0 +1,13 @@
+{
+  "backend": "rustfs",
+  "endpoint": "http://127.0.0.1:19000",
+  "observed_at": "2026-10-14T16:12:10.404789+00:00",
+  "browser_execution": "pending",
+  "checks": [
+    {
+      "name": "cors_configuration",
+      "status": "pass",
+      "origin": "http://localhost:3000"
+    }
+  ]
+}

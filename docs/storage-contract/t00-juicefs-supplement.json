@@ -1,0 +1,204 @@
+{
+  "runs": [
+    {
+      "run": "t00-ad24831927f0",
+      "backend": "JuiceFS 1.4.1",
+      "endpoint": "http://127.0.0.1:19010",
+      "updated_at": "2026-10-14T23:12:16.356285+00:00",
+      "checks": [
+        {
+          "name": "duration_30",
+          "status": "pass",
+          "accepted": false,
+          "http_status": 400,
+          "error_code": "InvalidParameterValue",
+          "message": "invalid token expiry"
+        },
+        {
+          "name": "duration_60",
+          "status": "pass",
+          "accepted": false,
+          "http_status": 400,
+          "error_code": "InvalidParameterValue",
+          "message": "invalid token expiry"
+        },
+        {
+          "name": "duration_899",
+          "status": "pass",
+          "accepted": false,
+          "http_status": 400,
+          "error_code": "InvalidParameterValue",
+          "message": "invalid token expiry"
+        },
+        {
+          "name": "list_bucket_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "cors_preflight",
+          "status": "pass",
+          "headers": {
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "Authorization, X-Amz-Date, X-Amz-Security-Token, X-Amz-Content-Sha256, Content-Type",
+            "Access-Control-Allow-Methods": "PUT",
+            "Access-Control-Allow-Origin": "http://localhost:3000"
+          }
+        },
+        {
+          "name": "policy_1000_keys",
+          "status": "pass",
+          "accepted": false,
+          "http_status": 400,
+          "error_code": "InvalidParameterValue",
+          "message": "Session policy shouldn't exceed 2048 characters"
+        },
+        {
+          "name": "extra_iam_deleted",
+          "status": "pass"
+        },
+        {
+          "name": "extra_policy_deleted",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "run": "t00-8a41824c7971",
+      "backend": "JuiceFS 1.4.1",
+      "endpoint": "http://127.0.0.1:19010",
+      "updated_at": "2026-10-14T23:13:46.141376+00:00",
+      "checks": [
+        {
+          "name": "orphan_visible_before_abort",
+          "status": "pass"
+        },
+        {
+          "name": "orphan_absent_after_abort",
+          "status": "pass"
+        },
+        {
+          "name": "cors_actual_get",
+          "status": "pass",
+          "headers": {
+            "access-control-allow-credentials": "true",
+            "access-control-allow-origin": "http://localhost:3000",
+            "access-control-expose-headers": "Date, Etag, Server, Connection, Accept-Ranges, Content-Range, Content-Encoding, Content-Length, Content-Type, Content-Disposition, Last-Modified, Content-Language, Cache-Control, Retry-After, X-Amz-Bucket-Region, Expires, X-Amz*, X-Amz*, *"
+          }
+        },
+        {
+          "name": "extra_object_deleted",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "run": "t00-9a151f2dfbeb",
+      "backend": "JuiceFS 1.4.1",
+      "endpoint": "http://127.0.0.1:19010",
+      "updated_at": "2026-10-14T23:20:49.441970+00:00",
+      "checks": [
+        {
+          "name": "download_authorized_key",
+          "status": "pass"
+        },
+        {
+          "name": "download_other_key_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "download_other_bucket_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "read_extra_resources_cleaned",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "run": "t00-5769ac2ac739",
+      "backend": "JuiceFS 1.4.1",
+      "endpoint": "http://127.0.0.1:19010",
+      "updated_at": "2026-10-14T23:21:30.250607+00:00",
+      "checks": [
+        {
+          "name": "download_authorized_key",
+          "status": "pass"
+        },
+        {
+          "name": "download_other_key_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "download_other_bucket_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "upload_authorized_key",
+          "status": "pass"
+        },
+        {
+          "name": "upload_other_key_session_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "upload_other_bucket_session_denied",
+          "status": "pass",
+          "error_code": "AccessDenied"
+        },
+        {
+          "name": "read_extra_resources_cleaned",
+          "status": "pass"
+        }
+      ]
+    }
+  ],
+  "note": "Supplementary live probes; main report remains separate. No container-origin SDK request executed.",
+  "checks": [
+    {
+      "name": "pod_service_dns_http_health",
+      "status": "pass",
+      "endpoint": "http://juicefs.artifact-storage.svc.cluster.local:9000/minio/health/live",
+      "origin": "artifact-storage storage Pod redis container",
+      "http_status": 200
+    },
+    {
+      "name": "pod_signed_s3_sdk",
+      "status": "pending",
+      "reason": "Only DNS + HTTP health tested from Pod; not signed SDK operations."
+    },
+    {
+      "name": "browser_sdk_upload_download",
+      "status": "pending",
+      "reason": "HTTP preflight and actual GET CORS headers tested; no actual browser SDK session."
+    }
+  ],
+  "expiration_assessment": {
+    "status": "pass",
+    "observation": "Same STS authorized PUT before wait; PUT after actual Expiration was rejected with InvalidAccessKeyId, then root PUT to same key succeeded before IAM cleanup.",
+    "raw_probe_status": "fail: initial probe did not recognize this backend error mapping; original report preserved",
+    "backend_mapping": "Expiration.Before(now) -> !Credentials.IsValid() -> IAMSys.GetUser returns false -> ErrInvalidAccessKeyID",
+    "source_commit": "juicedata/minio@69a6cfc9da65",
+    "sources": [
+      "https://github.com/juicedata/minio/blob/69a6cfc9da65/pkg/auth/credentials.go#L122-L146",
+      "https://github.com/juicedata/minio/blob/69a6cfc9da65/cmd/iam.go#L1544-L1555",
+      "https://github.com/juicedata/minio/blob/69a6cfc9da65/cmd/signature-v4-utils.go#L122-L129"
+    ],
+    "limits": [
+      "No same-STS positive request immediately before expiration in original run; final script adds it for future runs.",
+      "ExpiredToken not returned; cause mapping supported by pinned source, not unique error message."
+    ],
+    "cleanup": {
+      "temporary_iam_user": "deleted",
+      "temporary_policy": "deleted",
+      "own_objects": "deleted; HEAD404 verified",
+      "physical_space": "not asserted: trash-days=1"
+    }
+  }
+}

@@ -1,0 +1,597 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>四种文件版本发布流程</title><style>
+:root{color-scheme:light dark;--bg:#f2f6fa;--surface:#fff;--border:#d6e0ea;--strong:#818f9e;--text:#0f1a26;--dim:#4d6074;--accent:#a34700;--ok:#1c7443;--mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;--body:"IBM Plex Sans","PingFang SC","Microsoft YaHei",sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1520;--surface:#132031;--border:#22324a;--strong:#596b87;--text:#e3ecf5;--dim:#92a6bb;--accent:#ffb547;--ok:#6fd3a0}}
+*{box-sizing:border-box}html{font-size:17px;scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:1rem/1.65 var(--body)}main{max-width:68rem;margin:auto;padding:3rem 2rem 4.5rem}h1{font-size:clamp(2.25rem,5.5vw,4rem);line-height:1.15;letter-spacing:-.03em;margin:1rem 0}h2{font-size:1.625rem;line-height:1.3;margin:0 0 1.5rem}h3{font-size:1.25rem;line-height:1.4;margin:0 0 .75rem}p{max-width:68ch;margin:.75rem 0}a{color:var(--accent);text-underline-offset:.2em}button,summary{cursor:pointer}button{font: .875rem var(--body);border:1px solid var(--strong);border-radius:4px;background:var(--surface);color:var(--text);padding:.5rem .75rem}button:hover,button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button:disabled{opacity:.45;cursor:default}.kicker,.mono,code,pre{font-family:var(--mono)}.kicker{font-size:.75rem;letter-spacing:.08em;color:var(--dim)}.lead{font-size:1.25rem;color:var(--dim)}.badge{display:inline-block;border:1px solid var(--strong);border-radius:4px;padding:.25rem .5rem;font-size:.75rem;color:var(--dim)}section{margin-top:4.5rem;scroll-margin-top:4rem}figure{margin:1.5rem 0}figcaption{color:var(--dim);margin-top:.75rem}figcaption b{font-family:var(--mono);font-size:.75rem;margin-right:.5rem}.frame{padding:1.5rem;border:1px solid var(--border);border-radius:4px;background:var(--surface)}.scroll{overflow:auto;max-width:100%}.overview{background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:24px 24px;padding:1rem}svg{display:block;width:100%;min-width:800px}svg text{fill:var(--text);font-family:var(--body);font-size:17px}svg .small{fill:var(--dim);font-size:14px}svg .box{fill:var(--surface);stroke:var(--strong);stroke-width:1.5}svg .edge{fill:none;stroke:var(--dim);stroke-width:1.75;marker-end:url(#arrow)}svg .hot{stroke:var(--accent);stroke-width:2.5}svg .wire{stroke:var(--strong);stroke-dasharray:5 5;fill:none}svg .signal{fill:var(--accent)}.nav{display:flex;gap:1.5rem;position:sticky;top:0;z-index:2;background:var(--bg);padding:.75rem 0;border-bottom:1px solid var(--border);overflow:auto;font-size:.875rem}.nav a{white-space:nowrap;color:var(--dim)}.nav a[aria-current]{color:var(--accent)}details{border-bottom:1px solid var(--border);padding:1rem 0}summary{font-weight:600}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}.twocol>*{min-width:0}.muted{color:var(--dim)}pre{font-size:.875rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;margin:.5rem 0 0}code{font-size:.875em;overflow-wrap:anywhere}.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem;margin-bottom:1.5rem}.step{text-align:left;padding:.75rem}.step span{display:block;font-family:var(--mono);font-size:.75rem;color:var(--dim);margin-bottom:.25rem}.step[aria-pressed=true]{border:2px solid var(--accent);background:var(--bg)}.step[aria-pressed=true] span{color:var(--accent)}.route{font:.875rem/1.7 var(--mono);overflow-wrap:anywhere;padding:1rem 0;border-block:1px solid var(--border);margin:1rem 0}.method{color:var(--accent);font-weight:600}.controls{display:flex;align-items:center;justify-content:space-between;margin-top:1.5rem;gap:.5rem}.status{font:.875rem var(--mono);color:var(--ok)}.failure{border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1rem}.map{display:grid;grid-template-columns:1fr auto 1fr;gap:1.5rem;align-items:center}.map article{min-width:0;border:1px solid var(--strong);padding:1.5rem}.map .arrow{font-size:1.625rem;color:var(--accent)}.transaction{border:1px dashed var(--strong);padding:1.5rem}.chain{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}.chain strong{border:1px solid var(--strong);padding:.5rem .75rem}.chain span{color:var(--accent)}.cases{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem}.cases article{min-width:0;border-top:1px solid var(--strong);padding-top:1rem}.cases .mini{font-family:var(--mono);font-size:.875rem;margin:.75rem 0;color:var(--accent)}footer{margin-top:4.5rem;border-top:1px solid var(--border);padding-top:1.5rem;color:var(--dim)}.noscript{display:none}.print-steps{display:none}
+@media(max-width:700px){main{padding:1.5rem 1rem 3rem}.twocol,.cases{grid-template-columns:minmax(0,1fr)}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.step:last-child{grid-column:1/-1}.map{grid-template-columns:minmax(0,1fr)}.map .arrow{transform:rotate(90deg);justify-self:center}.frame{padding:1rem}section{margin-top:3rem}.nav{gap:1rem}.controls{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{body{background:white;color:black}main{padding:0}.nav,.controls,.steps,.interactive{display:none}.print-steps{display:block}section{margin-top:2rem}figure,article{break-inside:avoid}pre{border-color:#999;background:white}.frame{background:white}svg{min-width:0}.scroll{overflow:visible}:root{--bg:white;--surface:white;--text:#0f1a26;--dim:#4d6074;--border:#d6e0ea;--strong:#818f9e;--accent:#a34700}}
+
+.table-wrap{overflow:auto;border:1px solid var(--border)}table{border-collapse:collapse;width:100%;font-size:1rem}th,td{text-align:left;vertical-align:top;padding:.75rem 1rem;border-bottom:1px solid var(--border);min-width:10rem}th{color:var(--dim);background:var(--bg);font-size:.875rem}.suggestion{border:1px dashed var(--accent);padding:1.5rem;background:var(--surface)}.draft-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}.draft-tabs button[aria-pressed=true]{border:2px solid var(--accent)}.draft-result{min-height:3rem;padding:1rem;background:var(--bg);border:1px solid var(--border)}.draft-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}.draft-steps article{padding:1rem;border:1px solid var(--strong);min-width:0}.draft-steps article code{display:block}.draft-steps article p{margin-bottom:0}.proposal-label{color:var(--accent);font-size:.875rem}.draft-order{font: .875rem var(--mono);color:var(--dim);margin-bottom:.5rem}
+@media(max-width:700px){.draft-steps{grid-template-columns:minmax(0,1fr)}.suggestion{padding:1rem}}
+
+.flow-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin:2rem 0 1.5rem}.flow-tabs button{text-align:left;padding:1rem}.flow-tabs button[aria-selected=true]{border:2px solid var(--accent)}.flow-tabs small{display:block;color:var(--dim);margin-top:.25rem}.flow-meta{display:flex;gap:.75rem;flex-wrap:wrap;margin:1rem 0}.flow-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem;margin-bottom:1.5rem}.flow-stages button{text-align:left;padding:.75rem}.flow-stages button[aria-pressed=true]{border:2px solid var(--accent)}.flow-stages .num{color:var(--dim);font: .75rem var(--mono);display:block}.result-note{padding:1rem;background:var(--bg);margin:1rem 0}.flow-static{display:none}.diagram-label{font-size:14px;fill:var(--dim)}.important{color:var(--accent)}.call-pair{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}.call-pair>*{min-width:0}.stage-counter{font:.875rem var(--mono)}.preview-title{margin-top:0}.flow-topline{display:flex;align-items:center;justify-content:space-between;gap:1rem}.flow-topline h2{margin:0}.wide-svg{min-width:800px}.flow-nav-note{font-size:.875rem;color:var(--dim)}
+@media(max-width:700px){.flow-tabs{grid-template-columns:1fr 1fr}.call-pair{grid-template-columns:minmax(0,1fr)}.flow-topline{display:block}.flow-tabs button{padding:.75rem}.flow-stages{grid-template-columns:1fr 1fr}}
+@media print{.flow-tabs,.flow-stages,#interactive-flow{display:none}.flow-static{display:block}.flow-static article{break-inside:avoid;margin-bottom:2rem}}
+</style></head><body><main>
+<header><div class="kicker">ARTIFACT-GO / 设计 REVIEW</div><h1>四种发布方式，<br>共用一套文件接口。</h1><p class="lead">登记和确认直接接收、返回数组。单文件传一项，多文件和文件夹传多项；grant 保留权限参数，最后由 artifact 一次发布版本清单。</p><span class="badge">设计展示 · 尚未实现 · 草稿保存 JSON 与文件清单</span><p class="flow-nav-note">前提：租户 bucket 和集合 a01 已存在，所有请求经可信身份解析，文件与集合在同一租户 / 项目作用域。以下 ID、凭证和响应均为示例 / 节选。</p></header>
+<div class="flow-tabs" role="tablist" aria-label="选择发布流程"><button role="tab" id="flow-tab-0" data-flow="0" aria-controls="interactive-flow" aria-selected="true">单文件无草稿发布<small>一个文件 · 直接提交 JSON</small></button><button role="tab" id="flow-tab-1" data-flow="1" aria-controls="interactive-flow" aria-selected="false">单文件有草稿发布<small>JSON 与文件共同保存 · 指定修订发布</small></button><button role="tab" id="flow-tab-2" data-flow="2" aria-controls="interactive-flow" aria-selected="false">多文件发布<small>同一批接口 · 一次原子发布</small></button><button role="tab" id="flow-tab-3" data-flow="3" aria-controls="interactive-flow" aria-selected="false">文件夹发布<small>同一批接口 · 清单保留目录结构</small></button></div>
+<div id="interactive-flow" role="tabpanel" aria-labelledby="flow-tab-0" aria-live="polite"><div class="flow-topline"><h2 id="flow-title"></h2><span class="badge" id="flow-kind"></span></div><p id="flow-lead"></p>
+<figure><div class="frame"><div class="twocol"><div><div class="kicker">客户端选择的内容</div><pre id="flow-input"></pre></div><div><div class="kicker">最终版本文件清单</div><pre id="flow-manifest"></pre></div></div></div><figcaption><b>Fig. 1</b>清单保存逻辑路径与 FileID，确定这个版本的文件组成；物理位置和上传状态由 storage 保存。</figcaption></figure>
+<figure><div class="frame"><div class="flow-stages" id="stages" aria-label="选择流程步骤"></div><div class="kicker" id="actor"></div><h3 id="stage-title"></h3><div class="route" id="route"></div><div class="call-pair"><div><div class="kicker">请求</div><pre id="req"></pre></div><div><div class="kicker">响应节选 / 结果</div><pre id="res"></pre></div></div><p id="stage-note"></p><div class="controls"><button id="prev">上一步</button><span id="counter" class="stage-counter"></span><button id="next">下一步</button></div><p class="status" id="state"></p></div><figcaption><b>Fig. 2</b>点击步骤查看接口与 JSON。批量登记与确认允许部分成功；一份授权与正式版本发布分别要求整体成功。</figcaption></figure>
+<div class="result-note" id="case-note"></div><details><summary>预览或下载：仍使用同一个 grant 接口</summary><pre id="read-request"></pre><p>读取只传 fileIDs、scope 与 ttlSeconds。storage 校验可信租户 / 项目身份、文件归属与状态，不查询版本或草稿。未过期 ready 文件可在保存草稿前预览，bound 文件可读；uploading / deleting / deleted 不签发新读取权限。同作用域、同后端的不同版本或草稿文件可合并申请。一份 STS 覆盖本批精确 key，响应 actions 为 ["s3:GetObject"]；客户端用 S3 SDK GetObject / HeadObject 读取。ready 的授权到期时间不得超过准备 ExpiresAt，bound 不受历史准备期限限制。读取不延长准备期限、不延缓回收，也不保证对象一直存在到凭证到期。</p></details><figure id="draft-reuse" hidden><div class="frame"><h3>同一个文件，分别记住谁还在使用</h3><div class="draft-tabs" aria-label="查看引用变化"><button data-reuse="0" aria-pressed="true">发布后</button><button data-reuse="1" aria-pressed="false">草稿换文件</button><button data-reuse="2" aria-pressed="false">删除草稿</button><button data-reuse="3" aria-pressed="false">删除最后版本</button></div><div class="chain" id="reuse-map"></div><p id="reuse-note"></p><details><summary>复用与回收的边界</summary><p>同一租户 / 项目作用域内，多个草稿和版本可引用同一 FileID。artifact 在草稿或版本清单保存内部 ReferenceID，storage 只认识可信 ConsumerID、ReferenceID 与 FileID。未变文件和路径重命名沿用引用；发布、复制草稿或移除后重加都使用新 ReferenceID。每份引用释放后永不复活，迟到 Bind 也不能重新计数。</p><p>最后一个引用释放时，文件进入 deleting，不再允许重新引用。后台等待已发出的写权限到期，再删除完整对象；未完成分片由客户端调用 AbortMultipartUpload，或由经过验收的后端生命周期规则清理。只读凭证不延缓回收，删除后读取可能失败；保留墓碑，继续清理迟到的写入。删除版本 A 只隐藏其清单并释放自己的引用；若版本 B 或草稿仍持有同一文件，同作用域内已知 FileID 的客户端仍可申请读取。最后一个引用释放后停止签发新读取权限；删除版本不会等待仍被共享的文件物理删除。</p><p>草稿 DELETE 204 表示草稿已删除且释放任务已持久记录；storage 的释放稍后完成。任务尚未送达时文件可能仍为 bound，已知 FileID 的同作用域客户端仍可申请读取。业务失败只回滚本地业务修改；新增引用由持久任务补偿，不早于原准备 ExpiresAt。已 ready / bound 的文件不续发写权限；替换内容需上传新的 FileID。</p></details></div><figcaption><b>Fig. 3</b>发布增加版本引用；编辑或删除草稿只释放草稿引用，最后一个持有者释放后才回收对象。</figcaption></figure></div>
+<div class="flow-static"><article><h2>单文件无草稿发布</h2><h3>登记文件</h3><pre>POST /v1/storage/files
+[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  }
+]</pre><pre>[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。</p><h3>申请上传权限</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;upload&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><pre>{
+  &quot;credentials&quot;: {
+    &quot;accessKeyID&quot;: &quot;&lt;temporary-key&gt;&quot;,
+    &quot;secretAccessKey&quot;: &quot;&lt;temporary-secret&gt;&quot;,
+    &quot;sessionToken&quot;: &quot;&lt;temporary-token&gt;&quot;
+  },
+  &quot;endpoint&quot;: &quot;https://s3.example.test&quot;,
+  &quot;region&quot;: &quot;us-east-1&quot;,
+  &quot;forcePathStyle&quot;: true,
+  &quot;expiresAt&quot;: &quot;&lt;actual-expiry&gt;&quot;,
+  &quot;actions&quot;: [
+    &quot;s3:AbortMultipartUpload&quot;,
+    &quot;s3:ListMultipartUploadParts&quot;,
+    &quot;s3:PutObject&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f01&quot;
+    }
+  ]
+}</pre><p>fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。</p><h3>直传文件字节</h3><pre>S3 SDK：PutObject 或 multipart
+使用 grant.credentials 配置 S3 SDK，遍历 grant.files：
+PutObject(file.bucket, file.objectKey, 对应本地字节)
+
+大文件：
+CreateMultipartUpload → UploadPart（并发/重试）
+→ CompleteMultipartUpload</pre><pre>S3 保存完整对象。
+文件数据库状态此时仍为 uploading。</pre><p>同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。</p><h3>确认文件就绪</h3><pre>POST /v1/storage/files/complete
+[
+  &quot;f01&quot;
+]</pre><pre>[
+  {
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。</p><h3>发布正式版本</h3><pre>POST /v1/artifacts/a01/versions
+{
+  &quot;requestKey&quot;: &quot;publish-files-001&quot;,
+  &quot;payload&quot;: {
+    &quot;framework&quot;: &quot;pytorch&quot;
+  },
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;
+    }
+  ]
+}</pre><pre>{
+  &quot;id&quot;: &quot;v01&quot;,
+  &quot;artifactID&quot;: &quot;a01&quot;,
+  &quot;number&quot;: &quot;1&quot;,
+  &quot;state&quot;: &quot;ready&quot;,
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;size&quot;: 1048576
+    }
+  ]
+}</pre><p>服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。</p><h3>预览或下载</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;download&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><p>storage 只按可信作用域、FileID 与自身状态授权；未过期 ready 和 bound 可读。</p></article><article><h2>单文件有草稿发布</h2><h3>创建草稿</h3><pre>POST /v1/artifacts/a01/drafts
+{
+  &quot;requestKey&quot;: &quot;create-draft-001&quot;,
+  &quot;payload&quot;: {
+    &quot;model&quot;: &quot;model-a&quot;,
+    &quot;temperature&quot;: 0.7
+  },
+  &quot;annotations&quot;: {},
+  &quot;files&quot;: []
+}</pre><pre>{
+  &quot;id&quot;: &quot;d01&quot;,
+  &quot;revision&quot;: 1,
+  &quot;payload&quot;: {
+    &quot;model&quot;: &quot;model-a&quot;,
+    &quot;temperature&quot;: 0.7
+  },
+  &quot;files&quot;: []
+}</pre><p>只在显式新建时创建 DraftID。本例 files=[]，无需 Bind。也可从 sourceVersionID 创建：先读一致的 JSON 与清单，记录新引用计划并 Bind，在 artifact 最终本地事务重新检查来源可见性与 Revision，再提交草稿。新草稿使用自己的 ReferenceID，不复制字节。</p><h3>登记文件</h3><pre>POST /v1/storage/files
+[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  }
+]</pre><pre>[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。</p><h3>申请上传权限</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;upload&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><pre>{
+  &quot;credentials&quot;: {
+    &quot;accessKeyID&quot;: &quot;&lt;temporary-key&gt;&quot;,
+    &quot;secretAccessKey&quot;: &quot;&lt;temporary-secret&gt;&quot;,
+    &quot;sessionToken&quot;: &quot;&lt;temporary-token&gt;&quot;
+  },
+  &quot;endpoint&quot;: &quot;https://s3.example.test&quot;,
+  &quot;region&quot;: &quot;us-east-1&quot;,
+  &quot;forcePathStyle&quot;: true,
+  &quot;expiresAt&quot;: &quot;&lt;actual-expiry&gt;&quot;,
+  &quot;actions&quot;: [
+    &quot;s3:AbortMultipartUpload&quot;,
+    &quot;s3:ListMultipartUploadParts&quot;,
+    &quot;s3:PutObject&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f01&quot;
+    }
+  ]
+}</pre><p>fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。</p><h3>直传文件字节</h3><pre>S3 SDK：PutObject 或 multipart
+使用 grant.credentials 配置 S3 SDK，遍历 grant.files：
+PutObject(file.bucket, file.objectKey, 对应本地字节)
+
+大文件：
+CreateMultipartUpload → UploadPart（并发/重试）
+→ CompleteMultipartUpload</pre><pre>S3 保存完整对象。
+文件数据库状态此时仍为 uploading。</pre><p>同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。</p><h3>确认文件就绪</h3><pre>POST /v1/storage/files/complete
+[
+  &quot;f01&quot;
+]</pre><pre>[
+  {
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。</p><h3>保存 JSON 与文件</h3><pre>PUT /v1/artifacts/a01/drafts/d01
+{
+  &quot;requestKey&quot;: &quot;save-draft-001&quot;,
+  &quot;expectedRevision&quot;: 1,
+  &quot;payload&quot;: {
+    &quot;model&quot;: &quot;model-a&quot;,
+    &quot;temperature&quot;: 0.3
+  },
+  &quot;annotations&quot;: {},
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;
+    }
+  ]
+}</pre><pre>{
+  &quot;appliedRevision&quot;: 2,
+  &quot;draft&quot;: {
+    &quot;id&quot;: &quot;d01&quot;,
+    &quot;revision&quot;: 2,
+    &quot;payload&quot;: {
+      &quot;model&quot;: &quot;model-a&quot;,
+      &quot;temperature&quot;: 0.3
+    },
+    &quot;annotations&quot;: {},
+    &quot;files&quot;: [
+      {
+        &quot;path&quot;: &quot;model.bin&quot;,
+        &quot;fileID&quot;: &quot;f01&quot;,
+        &quot;size&quot;: 1048576
+      }
+    ]
+  }
+}</pre><p>PUT 必须传 requestKey、expectedRevision、JSON、annotations 和完整 files 清单。服务端先持久记录计划并 Bind 新引用，再本地 CAS 提交完整草稿、appliedRevision 和旧引用释放任务；未变文件沿用引用。RevisionConflict 409 表示本次已中止：保留本地编辑、暂停自动保存与发布，不得只换 Revision 覆盖。RequestInProgress 409 / OperationOutcomeUnknown 503 要以原键原参数核对结果。成功重试的 appliedRevision 仍为 2，但 draft 可能是更新的完整快照，不得把旧请求内容配上新 Revision。</p><h3>刷新恢复附件</h3><pre>GET /v1/artifacts/a01/drafts/d01
+刷新或重新打开同一个 DraftID，不创建新草稿。</pre><pre>{
+  &quot;id&quot;: &quot;d01&quot;,
+  &quot;revision&quot;: 2,
+  &quot;payload&quot;: {
+    &quot;model&quot;: &quot;model-a&quot;,
+    &quot;temperature&quot;: 0.3
+  },
+  &quot;annotations&quot;: {},
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;size&quot;: 1048576
+    }
+  ]
+}</pre><p>服务端返回同一修订的 JSON 与文件清单，客户端恢复已保存附件。尚未 complete / 绑定的文件受准备期限约束。失败 attempt 已绑定的附件由补偿任务释放，不早于原准备期限；任务延迟可能保留更久，不重置准备 TTL。草稿不自动过期。预览使用 POST /v1/storage/grants，只传 fileIDs、scope={preset:&quot;download&quot;} 与 ttlSeconds；storage 按可信身份、文件归属和自身状态授权，不检查草稿清单。尚未保存的未过期 ready 文件也可预览，再使用返回的 STS 直接向 S3 读取。</p><h3>发布正式版本</h3><pre>POST /v1/artifacts/a01/versions
+{
+  &quot;requestKey&quot;: &quot;publish-draft-001&quot;,
+  &quot;draftID&quot;: &quot;d01&quot;,
+  &quot;expectedDraftRevision&quot;: 2
+}</pre><pre>{
+  &quot;id&quot;: &quot;v01&quot;,
+  &quot;artifactID&quot;: &quot;a01&quot;,
+  &quot;number&quot;: &quot;1&quot;,
+  &quot;state&quot;: &quot;ready&quot;,
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;size&quot;: 1048576
+    }
+  ]
+}</pre><p>点击发布前，等待所有待加入附件 complete 成功，再完整保存 JSON 与 files，确认保存结果后使用完整草稿快照对应的 Revision 发布。按 expectedDraftRevision=2 读取一致的 JSON 与 files；请求不得另传 payload、annotations 或 files。服务端为 v01 先建立独立引用，再在 artifact 本地事务重新检查草稿仍存在且 Revision=2，并提交完整版本快照、成功回执及旧版本释放任务。d01 保留，随后编辑或删除草稿不改变 v01。来源已变更则中止并补偿，不能静默改用新修订。</p><h3>预览或下载</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;download&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><p>storage 只按可信作用域、FileID 与自身状态授权；未过期 ready 和 bound 可读。</p></article><article><h2>多文件发布</h2><h3>登记文件</h3><pre>POST /v1/storage/files
+[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;size&quot;: 512,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f02&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  }
+]</pre><pre>[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f02&quot;,
+    &quot;fileID&quot;: &quot;f02&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。</p><h3>申请上传权限</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;,
+    &quot;f02&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;upload&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><pre>{
+  &quot;credentials&quot;: {
+    &quot;accessKeyID&quot;: &quot;&lt;temporary-key&gt;&quot;,
+    &quot;secretAccessKey&quot;: &quot;&lt;temporary-secret&gt;&quot;,
+    &quot;sessionToken&quot;: &quot;&lt;temporary-token&gt;&quot;
+  },
+  &quot;endpoint&quot;: &quot;https://s3.example.test&quot;,
+  &quot;region&quot;: &quot;us-east-1&quot;,
+  &quot;forcePathStyle&quot;: true,
+  &quot;expiresAt&quot;: &quot;&lt;actual-expiry&gt;&quot;,
+  &quot;actions&quot;: [
+    &quot;s3:AbortMultipartUpload&quot;,
+    &quot;s3:ListMultipartUploadParts&quot;,
+    &quot;s3:PutObject&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f01&quot;
+    },
+    {
+      &quot;fileID&quot;: &quot;f02&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f02&quot;
+    }
+  ]
+}</pre><p>fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。</p><h3>直传文件字节</h3><pre>S3 SDK：PutObject 或 multipart
+使用 grant.credentials 配置 S3 SDK，遍历 grant.files：
+PutObject(file.bucket, file.objectKey, 对应本地字节)
+
+大文件：
+CreateMultipartUpload → UploadPart（并发/重试）
+→ CompleteMultipartUpload</pre><pre>S3 保存完整对象。
+文件数据库状态此时仍为 uploading。</pre><p>同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。</p><h3>确认文件就绪</h3><pre>POST /v1/storage/files/complete
+[
+  &quot;f01&quot;,
+  &quot;f02&quot;
+]</pre><pre>[
+  {
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 512,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;fileID&quot;: &quot;f02&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。</p><h3>发布正式版本</h3><pre>POST /v1/artifacts/a01/versions
+{
+  &quot;requestKey&quot;: &quot;publish-files-001&quot;,
+  &quot;payload&quot;: {
+    &quot;framework&quot;: &quot;pytorch&quot;
+  },
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;config.json&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;
+    },
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f02&quot;
+    }
+  ]
+}</pre><pre>{
+  &quot;id&quot;: &quot;v01&quot;,
+  &quot;artifactID&quot;: &quot;a01&quot;,
+  &quot;number&quot;: &quot;1&quot;,
+  &quot;state&quot;: &quot;ready&quot;,
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;config.json&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;size&quot;: 512
+    },
+    {
+      &quot;path&quot;: &quot;model.bin&quot;,
+      &quot;fileID&quot;: &quot;f02&quot;,
+      &quot;size&quot;: 1048576
+    }
+  ]
+}</pre><p>服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。</p><h3>预览或下载</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;,
+    &quot;f02&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;download&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><p>storage 只按可信作用域、FileID 与自身状态授权；未过期 ready 和 bound 可读。</p></article><article><h2>文件夹发布</h2><h3>登记文件</h3><pre>POST /v1/storage/files
+[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;size&quot;: 512,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f02&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f03&quot;,
+    &quot;size&quot;: 8192,
+    &quot;contentType&quot;: &quot;application/octet-stream&quot;
+  }
+]</pre><pre>[
+  {
+    &quot;requestKey&quot;: &quot;prepare-f01&quot;,
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f02&quot;,
+    &quot;fileID&quot;: &quot;f02&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;requestKey&quot;: &quot;prepare-f03&quot;,
+    &quot;fileID&quot;: &quot;f03&quot;,
+    &quot;state&quot;: &quot;uploading&quot;,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。</p><h3>申请上传权限</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;,
+    &quot;f02&quot;,
+    &quot;f03&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;upload&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><pre>{
+  &quot;credentials&quot;: {
+    &quot;accessKeyID&quot;: &quot;&lt;temporary-key&gt;&quot;,
+    &quot;secretAccessKey&quot;: &quot;&lt;temporary-secret&gt;&quot;,
+    &quot;sessionToken&quot;: &quot;&lt;temporary-token&gt;&quot;
+  },
+  &quot;endpoint&quot;: &quot;https://s3.example.test&quot;,
+  &quot;region&quot;: &quot;us-east-1&quot;,
+  &quot;forcePathStyle&quot;: true,
+  &quot;expiresAt&quot;: &quot;&lt;actual-expiry&gt;&quot;,
+  &quot;actions&quot;: [
+    &quot;s3:AbortMultipartUpload&quot;,
+    &quot;s3:ListMultipartUploadParts&quot;,
+    &quot;s3:PutObject&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f01&quot;
+    },
+    {
+      &quot;fileID&quot;: &quot;f02&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f02&quot;
+    },
+    {
+      &quot;fileID&quot;: &quot;f03&quot;,
+      &quot;bucket&quot;: &quot;tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;objectKey&quot;: &quot;files/f03&quot;
+    }
+  ]
+}</pre><p>fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。</p><h3>直传文件字节</h3><pre>S3 SDK：PutObject 或 multipart
+使用 grant.credentials 配置 S3 SDK，遍历 grant.files：
+PutObject(file.bucket, file.objectKey, 对应本地字节)
+
+大文件：
+CreateMultipartUpload → UploadPart（并发/重试）
+→ CompleteMultipartUpload</pre><pre>S3 保存完整对象。
+文件数据库状态此时仍为 uploading。</pre><p>同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。</p><h3>确认文件就绪</h3><pre>POST /v1/storage/files/complete
+[
+  &quot;f01&quot;,
+  &quot;f02&quot;,
+  &quot;f03&quot;
+]</pre><pre>[
+  {
+    &quot;fileID&quot;: &quot;f01&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 512,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;fileID&quot;: &quot;f02&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 1048576,
+    &quot;error&quot;: null
+  },
+  {
+    &quot;fileID&quot;: &quot;f03&quot;,
+    &quot;state&quot;: &quot;ready&quot;,
+    &quot;size&quot;: 8192,
+    &quot;error&quot;: null
+  }
+]</pre><p>请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。</p><h3>发布正式版本</h3><pre>POST /v1/artifacts/a01/versions
+{
+  &quot;requestKey&quot;: &quot;publish-files-001&quot;,
+  &quot;payload&quot;: {
+    &quot;framework&quot;: &quot;pytorch&quot;
+  },
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;config.json&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;
+    },
+    {
+      &quot;path&quot;: &quot;weights/model.bin&quot;,
+      &quot;fileID&quot;: &quot;f02&quot;
+    },
+    {
+      &quot;path&quot;: &quot;tokenizer/vocab.json&quot;,
+      &quot;fileID&quot;: &quot;f03&quot;
+    }
+  ]
+}</pre><pre>{
+  &quot;id&quot;: &quot;v01&quot;,
+  &quot;artifactID&quot;: &quot;a01&quot;,
+  &quot;number&quot;: &quot;1&quot;,
+  &quot;state&quot;: &quot;ready&quot;,
+  &quot;files&quot;: [
+    {
+      &quot;path&quot;: &quot;config.json&quot;,
+      &quot;fileID&quot;: &quot;f01&quot;,
+      &quot;size&quot;: 512
+    },
+    {
+      &quot;path&quot;: &quot;weights/model.bin&quot;,
+      &quot;fileID&quot;: &quot;f02&quot;,
+      &quot;size&quot;: 1048576
+    },
+    {
+      &quot;path&quot;: &quot;tokenizer/vocab.json&quot;,
+      &quot;fileID&quot;: &quot;f03&quot;,
+      &quot;size&quot;: 8192
+    }
+  ]
+}</pre><p>服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。</p><h3>预览或下载</h3><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;,
+    &quot;f02&quot;,
+    &quot;f03&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;preset&quot;: &quot;download&quot;
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><p>storage 只按可信作用域、FileID 与自身状态授权；未过期 ready 和 bound 可读。</p></article></div><noscript><style>#interactive-flow,.flow-tabs{display:none}.flow-static{display:block}</style></noscript>
+<section id="reference-handoff"><h2>一次保存或发布，服务端完成引用交接</h2><p>artifact 与 storage 各自提交事务。同进程也走相同协议；客户端仍只调用一次保存或发布。</p>
+<figure><div class="draft-steps" role="img" aria-label="服务端持久记录新增引用计划，storage 独立绑定，artifact 本地提交业务与释放任务，后台释放旧引用">
+<article><div class="draft-order">1 · artifact</div><h3>持久记录计划</h3><code>ReferenceChange / AttemptID</code><p>先记录全部新增 ReferenceID、FileID 与可信原始准备期限。</p></article>
+<article><div class="draft-order">2 · storage</div><h3>先 Bind 保留文件</h3><code>BindReferences</code><p>服务端通过受认证 HTTP/JSON 独立提交，必要时分批。全部确认后才能提交业务；引用没有自动过期。</p></article>
+<article><div class="draft-order">3 · artifact</div><h3>本地原子提交</h3><code>CAS + 成功回执 + Release 任务</code><p>复核来源修订与 attempt；提交清单、编号、alias、retention 及释放义务。</p></article>
+<article><div class="draft-order">4 · 后台 → storage</div><h3>异步释放旧引用</h3><code>ReleaseReferences</code><p>按不可变任务重试。storage 暂不可用时保留引用，恢复后继续交接。</p></article>
+</div><figcaption><b>Fig. 4</b>先持有新增文件，再提交业务；新引用与旧引用释放之间没有零引用空档。没有新增文件时省略查询与 Bind。</figcaption></figure>
+<figure><div class="cases">
+<article><h3>另一页先保存</h3><div class="mini">RevisionConflict 409 → 保留本地编辑</div><p>服务端确认 attempt 已中止后才返回冲突。全部计划新引用的补偿均不早于原 ExpiresAt；窗口内可用新引用重试或另存，不重置准备期限。</p></article>
+<article><h3>响应丢失或仍在执行</h3><div class="mini">原 requestKey + 原参数 → 查询 / 重试</div><p>RequestInProgress 409 或 OperationOutcomeUnknown 503 不代表另一页修改。先确认 appliedRevision 和完整当前 draft；原草稿已删返回 DraftDeleted，不复活。</p></article>
+<article><h3>请求进程失联</h3><div class="mini">preparing → aborted → 补偿</div><p>worker 只中止、清理，不代替用户发布。提交与中止竞争同一持久记录；提交结果未知时查主库，不能按超时释放。</p></article>
+</div><figcaption><b>Fig. 5</b>成功最多一次；失败引用可能暂时保留，已提交文件不会因请求超时被误收。</figcaption></figure>
+<details><summary>重复、乱序与删除回执</summary><p>同一 (ConsumerID, ReferenceID) 固定对应一个 FileID 和作用域；重复 Bind / Release 幂等。Release 先到也记录 released 墓碑，后到的 Bind 永久拒绝。仅写墓碑不把未绑定的准备文件转 deleting；文件锁决定 Bind、Release 与 GC 谁先成功。</p><p>版本或草稿的内部 ReferenceID 不进入客户端授权参数。服务端通过 GetReferenceStatuses 确认释放：非最后引用完成即收尾，最后引用按物理删除回执收尾。删除不是即时撤销凭证，读取权限仍按 storage 自身状态判断。</p></details>
+</section><details><summary>scope：使用预设，或直接传 S3 Actions</summary><div class="table-wrap"><table><thead><tr><th>预设</th><th>S3 Actions</th><th>允许的操作</th></tr></thead><tbody><tr><td><code>upload</code></td><td><code>s3:PutObject, s3:ListMultipartUploadParts, s3:AbortMultipartUpload</code></td><td>普通上传、创建 / 上传 / 完成分片、列出已上传分片、中止分片上传</td></tr><tr><td><code>download</code></td><td><code>s3:GetObject</code></td><td>下载、Range 读取和 HEAD 查询</td></tr></tbody></table></div><p>scope.preset 与 scope.actions 必须二选一。自定义权限直接使用 S3 原名；服务端按允许的 Actions、调用者权限和文件状态校验，不能因为客户端指定了 Actions 就直接授权，也不静默删减权限。响应 actions 返回展开后的实际权限。不同权限的文件分别申请；续期再次调用同一个接口并重新校验。</p><pre>POST /v1/storage/grants
+{
+  &quot;fileIDs&quot;: [
+    &quot;f01&quot;,
+    &quot;f02&quot;
+  ],
+  &quot;scope&quot;: {
+    &quot;actions&quot;: [
+      &quot;s3:PutObject&quot;,
+      &quot;s3:ListMultipartUploadParts&quot;,
+      &quot;s3:AbortMultipartUpload&quot;
+    ]
+  },
+  &quot;ttlSeconds&quot;: 900
+}</pre><p>本例自定义 actions 与 upload 预设等价。s3:PutObject 同时覆盖普通上传与分片创建、上传、完成；s3:GetObject 同时允许 GET 与 HEAD。读取仅允许未过期 ready 或 bound 文件，写入仅允许未过期 uploading 文件。混合读写 Actions 必须同时满足状态条件，首期没有同时允许新读写授权的文件状态，因此整份拒绝。对象删除继续由引用释放与后台回收负责。</p></details><footer><p>本页展示设计契约，接口尚未实现。Version 冻结文件清单及确认时的元信息；发布后外部字节被客户端修改的后果仍由客户端负责。</p><p><a href="../version-service-technical-design-20261013.md">当前技术设计</a> · <a href="../codebase-design-20261014.md">代码结构与职责</a> · <a href="../storage-reference-handoff-design-20261015.md">引用交接协议</a></p></footer>
+</main><script>const flows=[{"title": "单文件无草稿发布", "short": "一个文件 · 直接提交 JSON", "lead": "上传 model.bin，确认 ready 后一次发布 JSON 与文件清单。", "input": "model.bin", "fs": [{"path": "model.bin", "fileID": "f01", "size": 1048576}], "steps": [{"title": "登记文件", "actor": "客户端 → storage", "path": "POST /v1/storage/files", "request": [{"requestKey": "prepare-f01", "size": 1048576, "contentType": "application/octet-stream"}], "response": [{"requestKey": "prepare-f01", "fileID": "f01", "state": "uploading", "error": null}], "note": "请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。", "state": "uploading"}, {"title": "申请上传权限", "actor": "客户端 → storage", "path": "POST /v1/storage/grants", "request": {"fileIDs": ["f01"], "scope": {"preset": "upload"}, "ttlSeconds": 900}, "response": {"credentials": {"accessKeyID": "<temporary-key>", "secretAccessKey": "<temporary-secret>", "sessionToken": "<temporary-token>"}, "endpoint": "https://s3.example.test", "region": "us-east-1", "forcePathStyle": true, "expiresAt": "<actual-expiry>", "actions": ["s3:AbortMultipartUpload", "s3:ListMultipartUploadParts", "s3:PutObject"], "files": [{"fileID": "f01", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f01"}]}, "note": "fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。", "state": "uploading"}, {"title": "直传文件字节", "actor": "客户端 → JuiceFS S3 gateway", "path": "S3 SDK：PutObject 或 multipart", "request": "使用 grant.credentials 配置 S3 SDK，遍历 grant.files：\nPutObject(file.bucket, file.objectKey, 对应本地字节)\n\n大文件：\nCreateMultipartUpload → UploadPart（并发/重试）\n→ CompleteMultipartUpload", "response": "S3 保存完整对象。\n文件数据库状态此时仍为 uploading。", "note": "同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。", "state": "uploading"}, {"title": "确认文件就绪", "actor": "客户端 → storage → S3", "path": "POST /v1/storage/files/complete", "request": ["f01"], "response": [{"fileID": "f01", "state": "ready", "size": 1048576, "error": null}], "note": "请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。", "state": "ready"}, {"title": "发布正式版本", "actor": "客户端 → artifact；服务端先 Bind，再本地提交", "path": "POST /v1/artifacts/a01/versions", "request": {"requestKey": "publish-files-001", "payload": {"framework": "pytorch"}, "files": [{"path": "model.bin", "fileID": "f01"}]}, "response": {"id": "v01", "artifactID": "a01", "number": "1", "state": "ready", "files": [{"path": "model.bin", "fileID": "f01", "size": 1048576}]}, "note": "服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。", "state": "Version ready / StorageFile bound"}], "readRequest": {"fileIDs": ["f01"], "scope": {"preset": "download"}, "ttlSeconds": 900}}, {"title": "单文件有草稿发布", "short": "JSON 与文件共同保存 · 指定修订发布", "lead": "文件上传完成后，和 JSON 一起保存到草稿；刷新可恢复附件，发布复制指定修订的完整内容。", "input": "草稿 d01 + model.bin", "fs": [{"path": "model.bin", "fileID": "f01", "size": 1048576}], "steps": [{"title": "创建草稿", "actor": "客户端 → artifact", "path": "POST /v1/artifacts/a01/drafts", "request": {"requestKey": "create-draft-001", "payload": {"model": "model-a", "temperature": 0.7}, "annotations": {}, "files": []}, "response": {"id": "d01", "revision": 1, "payload": {"model": "model-a", "temperature": 0.7}, "files": []}, "note": "只在显式新建时创建 DraftID。本例 files=[]，无需 Bind。也可从 sourceVersionID 创建：先读一致的 JSON 与清单，记录新引用计划并 Bind，在 artifact 最终本地事务重新检查来源可见性与 Revision，再提交草稿。新草稿使用自己的 ReferenceID，不复制字节。", "state": "Draft revision 1 / files []"}, {"title": "登记文件", "actor": "客户端 → storage", "path": "POST /v1/storage/files", "request": [{"requestKey": "prepare-f01", "size": 1048576, "contentType": "application/octet-stream"}], "response": [{"requestKey": "prepare-f01", "fileID": "f01", "state": "uploading", "error": null}], "note": "请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。", "state": "uploading"}, {"title": "申请上传权限", "actor": "客户端 → storage", "path": "POST /v1/storage/grants", "request": {"fileIDs": ["f01"], "scope": {"preset": "upload"}, "ttlSeconds": 900}, "response": {"credentials": {"accessKeyID": "<temporary-key>", "secretAccessKey": "<temporary-secret>", "sessionToken": "<temporary-token>"}, "endpoint": "https://s3.example.test", "region": "us-east-1", "forcePathStyle": true, "expiresAt": "<actual-expiry>", "actions": ["s3:AbortMultipartUpload", "s3:ListMultipartUploadParts", "s3:PutObject"], "files": [{"fileID": "f01", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f01"}]}, "note": "fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。", "state": "uploading"}, {"title": "直传文件字节", "actor": "客户端 → JuiceFS S3 gateway", "path": "S3 SDK：PutObject 或 multipart", "request": "使用 grant.credentials 配置 S3 SDK，遍历 grant.files：\nPutObject(file.bucket, file.objectKey, 对应本地字节)\n\n大文件：\nCreateMultipartUpload → UploadPart（并发/重试）\n→ CompleteMultipartUpload", "response": "S3 保存完整对象。\n文件数据库状态此时仍为 uploading。", "note": "同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。", "state": "uploading"}, {"title": "确认文件就绪", "actor": "客户端 → storage → S3", "path": "POST /v1/storage/files/complete", "request": ["f01"], "response": [{"fileID": "f01", "state": "ready", "size": 1048576, "error": null}], "note": "请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。", "state": "ready"}, {"title": "保存 JSON 与文件", "actor": "客户端 → artifact；新增引用先 Bind，旧引用后台 Release", "path": "PUT /v1/artifacts/a01/drafts/d01", "request": {"requestKey": "save-draft-001", "expectedRevision": 1, "payload": {"model": "model-a", "temperature": 0.3}, "annotations": {}, "files": [{"path": "model.bin", "fileID": "f01"}]}, "response": {"appliedRevision": 2, "draft": {"id": "d01", "revision": 2, "payload": {"model": "model-a", "temperature": 0.3}, "annotations": {}, "files": [{"path": "model.bin", "fileID": "f01", "size": 1048576}]}}, "note": "PUT 必须传 requestKey、expectedRevision、JSON、annotations 和完整 files 清单。服务端先持久记录计划并 Bind 新引用，再本地 CAS 提交完整草稿、appliedRevision 和旧引用释放任务；未变文件沿用引用。RevisionConflict 409 表示本次已中止：保留本地编辑、暂停自动保存与发布，不得只换 Revision 覆盖。RequestInProgress 409 / OperationOutcomeUnknown 503 要以原键原参数核对结果。成功重试的 appliedRevision 仍为 2，但 draft 可能是更新的完整快照，不得把旧请求内容配上新 Revision。", "state": "appliedRevision 2 / draft.revision 2 / f01 bound"}, {"title": "刷新恢复附件", "actor": "客户端 → artifact", "path": "GET /v1/artifacts/a01/drafts/d01", "request": "刷新或重新打开同一个 DraftID，不创建新草稿。", "response": {"id": "d01", "revision": 2, "payload": {"model": "model-a", "temperature": 0.3}, "annotations": {}, "files": [{"path": "model.bin", "fileID": "f01", "size": 1048576}]}, "note": "服务端返回同一修订的 JSON 与文件清单，客户端恢复已保存附件。尚未 complete / 绑定的文件受准备期限约束。失败 attempt 已绑定的附件由补偿任务释放，不早于原准备期限；任务延迟可能保留更久，不重置准备 TTL。草稿不自动过期。预览使用 POST /v1/storage/grants，只传 fileIDs、scope={preset:\"download\"} 与 ttlSeconds；storage 按可信身份、文件归属和自身状态授权，不检查草稿清单。尚未保存的未过期 ready 文件也可预览，再使用返回的 STS 直接向 S3 读取。", "state": "Draft revision 2 / f01 bound / 刷新后仍在"}, {"title": "发布正式版本", "actor": "客户端 → artifact；服务端先 Bind，再本地提交", "path": "POST /v1/artifacts/a01/versions", "request": {"requestKey": "publish-draft-001", "draftID": "d01", "expectedDraftRevision": 2}, "response": {"id": "v01", "artifactID": "a01", "number": "1", "state": "ready", "files": [{"path": "model.bin", "fileID": "f01", "size": 1048576}]}, "note": "点击发布前，等待所有待加入附件 complete 成功，再完整保存 JSON 与 files，确认保存结果后使用完整草稿快照对应的 Revision 发布。按 expectedDraftRevision=2 读取一致的 JSON 与 files；请求不得另传 payload、annotations 或 files。服务端为 v01 先建立独立引用，再在 artifact 本地事务重新检查草稿仍存在且 Revision=2，并提交完整版本快照、成功回执及旧版本释放任务。d01 保留，随后编辑或删除草稿不改变 v01。来源已变更则中止并补偿，不能静默改用新修订。", "state": "d01 → f01 ← v01 / 两个持有者"}], "readRequest": {"fileIDs": ["f01"], "scope": {"preset": "download"}, "ttlSeconds": 900}}, {"title": "多文件发布", "short": "同一批接口 · 一次原子发布", "lead": "选中 config.json 与 model.bin；文件逐项准备，版本整体发布。", "input": "config.json\nmodel.bin", "fs": [{"path": "config.json", "fileID": "f01", "size": 512}, {"path": "model.bin", "fileID": "f02", "size": 1048576}], "steps": [{"title": "登记文件", "actor": "客户端 → storage", "path": "POST /v1/storage/files", "request": [{"requestKey": "prepare-f01", "size": 512, "contentType": "application/octet-stream"}, {"requestKey": "prepare-f02", "size": 1048576, "contentType": "application/octet-stream"}], "response": [{"requestKey": "prepare-f01", "fileID": "f01", "state": "uploading", "error": null}, {"requestKey": "prepare-f02", "fileID": "f02", "state": "uploading", "error": null}], "note": "请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。", "state": "uploading"}, {"title": "申请上传权限", "actor": "客户端 → storage", "path": "POST /v1/storage/grants", "request": {"fileIDs": ["f01", "f02"], "scope": {"preset": "upload"}, "ttlSeconds": 900}, "response": {"credentials": {"accessKeyID": "<temporary-key>", "secretAccessKey": "<temporary-secret>", "sessionToken": "<temporary-token>"}, "endpoint": "https://s3.example.test", "region": "us-east-1", "forcePathStyle": true, "expiresAt": "<actual-expiry>", "actions": ["s3:AbortMultipartUpload", "s3:ListMultipartUploadParts", "s3:PutObject"], "files": [{"fileID": "f01", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f01"}, {"fileID": "f02", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f02"}]}, "note": "fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。", "state": "uploading"}, {"title": "直传文件字节", "actor": "客户端 → JuiceFS S3 gateway", "path": "S3 SDK：PutObject 或 multipart", "request": "使用 grant.credentials 配置 S3 SDK，遍历 grant.files：\nPutObject(file.bucket, file.objectKey, 对应本地字节)\n\n大文件：\nCreateMultipartUpload → UploadPart（并发/重试）\n→ CompleteMultipartUpload", "response": "S3 保存完整对象。\n文件数据库状态此时仍为 uploading。", "note": "同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。", "state": "uploading"}, {"title": "确认文件就绪", "actor": "客户端 → storage → S3", "path": "POST /v1/storage/files/complete", "request": ["f01", "f02"], "response": [{"fileID": "f01", "state": "ready", "size": 512, "error": null}, {"fileID": "f02", "state": "ready", "size": 1048576, "error": null}], "note": "请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。", "state": "ready"}, {"title": "发布正式版本", "actor": "客户端 → artifact；服务端先 Bind，再本地提交", "path": "POST /v1/artifacts/a01/versions", "request": {"requestKey": "publish-files-001", "payload": {"framework": "pytorch"}, "files": [{"path": "config.json", "fileID": "f01"}, {"path": "model.bin", "fileID": "f02"}]}, "response": {"id": "v01", "artifactID": "a01", "number": "1", "state": "ready", "files": [{"path": "config.json", "fileID": "f01", "size": 512}, {"path": "model.bin", "fileID": "f02", "size": 1048576}]}, "note": "服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。", "state": "Version ready / StorageFile bound"}], "readRequest": {"fileIDs": ["f01", "f02"], "scope": {"preset": "download"}, "ttlSeconds": 900}}, {"title": "文件夹发布", "short": "同一批接口 · 清单保留目录结构", "lead": "选择 model/ 目录；按目录根的相对路径发布三个文件，storage 仍只处理三个独立 FileID。", "input": "model/  ← 选择的根目录\n├── config.json\n├── weights/model.bin\n└── tokenizer/vocab.json", "fs": [{"path": "config.json", "fileID": "f01", "size": 512}, {"path": "weights/model.bin", "fileID": "f02", "size": 1048576}, {"path": "tokenizer/vocab.json", "fileID": "f03", "size": 8192}], "steps": [{"title": "登记文件", "actor": "客户端 → storage", "path": "POST /v1/storage/files", "request": [{"requestKey": "prepare-f01", "size": 512, "contentType": "application/octet-stream"}, {"requestKey": "prepare-f02", "size": 1048576, "contentType": "application/octet-stream"}, {"requestKey": "prepare-f03", "size": 8192, "contentType": "application/octet-stream"}], "response": [{"requestKey": "prepare-f01", "fileID": "f01", "state": "uploading", "error": null}, {"requestKey": "prepare-f02", "fileID": "f02", "state": "uploading", "error": null}, {"requestKey": "prepare-f03", "fileID": "f03", "state": "uploading", "error": null}], "note": "请求直接传 1–1000 项对象数组，单文件传一项；HTTP 200 直接返回等长、同序的逐项结果数组，每项含成功结果或 error。无效 JSON、非数组、空数组、超限、元素非对象或批内重复 requestKey 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。每项 requestKey 独立幂等，字段值或文件处理失败记入该项 error，重试仅补失败项；不接收逻辑路径。", "state": "uploading"}, {"title": "申请上传权限", "actor": "客户端 → storage", "path": "POST /v1/storage/grants", "request": {"fileIDs": ["f01", "f02", "f03"], "scope": {"preset": "upload"}, "ttlSeconds": 900}, "response": {"credentials": {"accessKeyID": "<temporary-key>", "secretAccessKey": "<temporary-secret>", "sessionToken": "<temporary-token>"}, "endpoint": "https://s3.example.test", "region": "us-east-1", "forcePathStyle": true, "expiresAt": "<actual-expiry>", "actions": ["s3:AbortMultipartUpload", "s3:ListMultipartUploadParts", "s3:PutObject"], "files": [{"fileID": "f01", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f01"}, {"fileID": "f02", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f02"}, {"fileID": "f03", "bucket": "tenant-t-aaaaaaaaaaaaaaaaaaaaaaaa", "objectKey": "files/f03"}]}, "note": "fileIDs 数组含 1–1000 项，同一批使用同一组 S3 Actions，整体校验通过后 HTTP 200 返回一份 STS；任一文件或权限不允许则整份失败。仅 uploading 且准备期限未到的文件可申请写权限；ready / bound 不续发写权限。只授权这些精确 ObjectKey，策略过大必须拆批，不能扩大到目录或 bucket。900 秒是申请值，实际有效期取请求、配置、文件准备期限与签发方上限的最小值。", "state": "uploading"}, {"title": "直传文件字节", "actor": "客户端 → JuiceFS S3 gateway", "path": "S3 SDK：PutObject 或 multipart", "request": "使用 grant.credentials 配置 S3 SDK，遍历 grant.files：\nPutObject(file.bucket, file.objectKey, 对应本地字节)\n\n大文件：\nCreateMultipartUpload → UploadPart（并发/重试）\n→ CompleteMultipartUpload", "response": "S3 保存完整对象。\n文件数据库状态此时仍为 uploading。", "note": "同一批文件共用一份 STS，使用返回的每个 file.objectKey；不使用 model.bin 或目录相对路径作为物理 key。客户端控制并发、分片和断点恢复；上传流不经过业务 API。", "state": "uploading"}, {"title": "确认文件就绪", "actor": "客户端 → storage → S3", "path": "POST /v1/storage/files/complete", "request": ["f01", "f02", "f03"], "response": [{"fileID": "f01", "state": "ready", "size": 512, "error": null}, {"fileID": "f02", "state": "ready", "size": 1048576, "error": null}, {"fileID": "f03", "state": "ready", "size": 8192, "error": null}], "note": "请求直接传 1–1000 项 FileID 字符串数组；HTTP 200 直接返回等长、同序的逐项结果数组，每项含确认结果或 error。无效 JSON、非数组、空数组、超限、元素非字符串或批内重复 FileID 返回整请求 400，均不执行任何项；非 200 返回统一错误对象。storage 核对对象存在及实际大小，文件错误逐项返回并可重试；ready / bound 的确认重试返回原确认记录，不改变引用。uploading 文件不能进入草稿或版本清单。确认成功后可用 grant 的 download 预设预览，无需先保存草稿；ready 必须仍在准备期限内，读取不会延长期限。", "state": "ready"}, {"title": "发布正式版本", "actor": "客户端 → artifact；服务端先 Bind，再本地提交", "path": "POST /v1/artifacts/a01/versions", "request": {"requestKey": "publish-files-001", "payload": {"framework": "pytorch"}, "files": [{"path": "config.json", "fileID": "f01"}, {"path": "weights/model.bin", "fileID": "f02"}, {"path": "tokenizer/vocab.json", "fileID": "f03"}]}, "response": {"id": "v01", "artifactID": "a01", "number": "1", "state": "ready", "files": [{"path": "config.json", "fileID": "f01", "size": 512}, {"path": "weights/model.bin", "fileID": "f02", "size": 1048576}, {"path": "tokenizer/vocab.json", "fileID": "f03", "size": 8192}]}, "note": "服务端先保存新增引用计划，再由 storage 独立提交 Bind；全部确认后，在 artifact 本地事务创建 Version、冻结 VersionFile 清单、更新编号与 alias、记录成功回执及旧引用释放任务。业务失败不发布版本，已绑定引用按持久补偿计划稍后释放。可引用同作用域内未过期 ready 或已有引用的 bound 文件，无需复制字节。成功重试使用原 requestKey 与原参数；客户端不调用 Bind / Release。", "state": "Version ready / StorageFile bound"}], "readRequest": {"fileIDs": ["f01", "f02", "f03"], "scope": {"preset": "download"}, "ttlSeconds": 900}}];let flowIndex=0,stageIndex=0;const $=id=>document.getElementById(id);const fmt=x=>typeof x==='string'?x:JSON.stringify(x,null,2);function renderStage(n){stageIndex=n;const f=flows[flowIndex],d=f.steps[n];$('actor').textContent=d.actor;$('stage-title').textContent=d.title;$('route').textContent=d.path;$('req').textContent=fmt(d.request);$('res').textContent=fmt(d.response);$('stage-note').textContent=d.note;$('state').textContent=d.state;$('counter').textContent=(n+1)+' / '+f.steps.length;$('prev').disabled=n===0;$('next').disabled=n===f.steps.length-1;document.querySelectorAll('[data-stage]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.stage)===n)))}function renderFlow(n){flowIndex=n;$('draft-reuse').hidden=n!==1;$('interactive-flow').setAttribute('aria-labelledby','flow-tab-'+n);const f=flows[n];$('read-request').textContent='POST /v1/storage/grants\n'+JSON.stringify(f.readRequest,null,2);$('flow-title').textContent=f.title;$('flow-kind').textContent=n===1?'JSON + 文件草稿':'直接发布';$('flow-lead').textContent=f.lead;$('flow-input').textContent=f.input;$('flow-manifest').textContent=JSON.stringify(f.fs.map(x=>({path:x.path,fileID:x.fileID})),null,2);$('case-note').textContent=n===1?'草稿发布引用 DraftID + Revision，禁止附加 files。草稿替换文件必须上传为新 FileID；旧版本继续引用旧文件。文件可被多个草稿和版本复用，最后一个引用释放后才回收。':n===3?'文件夹授权与普通多文件相同：一份 STS 覆盖本批精确 key。model/ 是选择的根，清单从 config.json、weights/model.bin 等相对路径开始；不授权整个目录前缀，当前不保存空目录。':n===2?'文件登记和确认逐项返回结果，grant 整份成功或失败。新上传文件全部 ready 后提交清单；也可混合复用同作用域 bound 文件，一次原子发布。':'单个文件的登记、确认也直接传数组；grant 保留 fileIDs、scope 等字段，草稿和版本保留 files 清单。没有另一套单文件接口。';$('stages').replaceChildren();f.steps.forEach((d,i)=>{const b=document.createElement('button');b.dataset.stage=i;b.innerHTML='<span class="num">'+(i+1)+'</span>';b.append(document.createTextNode(d.title));b.onclick=()=>renderStage(i);$('stages').append(b)});document.querySelectorAll('[data-flow]').forEach(b=>{const active=Number(b.dataset.flow)===n;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1});renderStage(0)}document.querySelectorAll('[data-flow]').forEach(b=>{b.onclick=()=>renderFlow(Number(b.dataset.flow));b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();const n=(flowIndex+(e.key==='ArrowRight'?1:3))%4;renderFlow(n);document.querySelector('[data-flow="'+n+'"]').focus()}}});$('prev').onclick=()=>renderStage(Math.max(0,stageIndex-1));$('next').onclick=()=>renderStage(Math.min(flows[flowIndex].steps.length-1,stageIndex+1));const reuseScenes=[
+ {nodes:['草稿 d01','持有 →','f01 · bound','← 持有','版本 v01'],note:'先为 v01 Bind 独立 ReferenceID，再提交版本快照；d01 的引用保留。storage 不识别 d01 / v01，这些归属由 artifact 记录。'},
+ {nodes:['草稿 d01 → f02','替换后','版本 v01 → f01'],note:'先把新字节上传为 f02，再用新 requestKey 与 expectedRevision=2 保存完整清单。服务端持久记录计划并 Bind f02，在 artifact 本地事务 CAS 提交 Revision 3 与 f01 释放任务，后台 Release 旧引用；v01 继续持有 f01。'},
+ {nodes:['草稿 d01 · 已删除','释放任务 → f02','版本 v01 → f01 · bound'],note:'DELETE /v1/artifacts/a01/drafts/d01?expectedRevision=3 返回 204：本地已删除并记录释放任务。任务送达前 f02 可能仍可读；Release 生效且无其他引用后 f02 才进入 deleting。f01 由 v01 保留。'},
+ {nodes:['版本 v01 · deleting','后台 Release f01','等待写凭证到期 →','物理回收后收尾'],note:'版本先逻辑不可见并持久记录释放任务。示例中后台释放 f01 最后引用后进入 deleting，等待写凭证到期及一次物理 Delete 回执，v01 才完成删除。若还有其他版本、草稿或待补偿 attempt 持有 f01，本版本的释放完成后即可收尾，f01 保持 bound 可读。'}
+];function renderReuse(n){const d=reuseScenes[n];$('reuse-map').replaceChildren();d.nodes.forEach(x=>{const e=document.createElement('strong');e.textContent=x;$('reuse-map').append(e)});$('reuse-note').textContent=d.note;document.querySelectorAll('[data-reuse]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.reuse)===n)))}document.querySelectorAll('[data-reuse]').forEach(b=>b.onclick=()=>renderReuse(Number(b.dataset.reuse)));renderReuse(0);renderFlow(0);</script></body></html>
