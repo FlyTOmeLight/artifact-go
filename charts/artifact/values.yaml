@@ -1,0 +1,16 @@
+image:
+  repository: artifact-go
+  tag: ""
+  pullPolicy: IfNotPresent
+existingSecret: ""
+tlsSecret: ""
+proxyImage: nginx:1.28.0-alpine
+config: {}
+nginxConfig: ""
+postgres:
+  image: postgres:17-alpine
+  existingSecret: ""
+  initSecret: ""
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi

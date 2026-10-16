@@ -1,0 +1,6 @@
+.git
+.scratch
+bin
+.codegraph
+node_modules
+*.log

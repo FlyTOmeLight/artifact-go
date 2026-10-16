@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: api
+          image: {{ printf "%s:%s" .Values.image.repository (required "image.tag is required" .Values.image.tag) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/usr/local/bin/artifact-forge-server]
+          env:
+            - name: SERVER_CONFIG_PATH
+              value: /config/config.json
+            - name: SSL_CERT_FILE
+              value: /tls/ca.crt
+          envFrom:
+            - secretRef:
+                name: {{ required "existingSecret is required" .Values.existingSecret }}
+          ports:
+            - containerPort: 18080
+          readinessProbe:
+            tcpSocket:
+              port: 18080
+            initialDelaySeconds: 3
+          # Keep serving while Service endpoint removal reaches the data plane.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: integration-tls
+              mountPath: /tls
+              readOnly: true
+        - name: integration-tls
+          image: {{ .Values.proxyImage | quote }}
+          command: [nginx, -c, /config/nginx.conf, -g, "daemon off;"]
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
+          ports:
+            - name: internal-tls
+              containerPort: 8443
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            runAsNonRoot: true
+            runAsUser: 101
+          volumeMounts:
+            - name: integration-tls
+              mountPath: /tls
+              readOnly: true
+            - name: integration-nginx
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-runtime
+        - name: integration-tls
+          secret:
+            secretName: {{ required "tlsSecret is required" .Values.tlsSecret }}
+        - name: integration-nginx
+          configMap:
+            name: {{ .Release.Name }}-integration-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: 18080
+    - name: internal-tls
+      port: 8443
+      targetPort: 8443

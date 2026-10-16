@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-runtime
+data:
+  config.json: |
+    {{- required "config is required" .Values.config | toPrettyJson | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-integration-nginx
+data:
+  nginx.conf: |
+    {{- required "nginxConfig is required" .Values.nginxConfig | nindent 4 }}

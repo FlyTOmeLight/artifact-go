@@ -1,38 +1,37 @@
-# Forge 本机集成部署
+# Forge OrbStack 接入与验收
 
-此目录部署到 `orbstack`：`artifact-storage` 中的独立 PostgreSQL（artifact/storage 两库、两角色）、combined Forge 服务和 TLS sidecar；`forge-tenant-split` 中的 tenant API TLS bridge。使用已有 JuiceFS，保留其数据与管理凭据。镜像 `artifact-go:forge-verification` 必须预先构建。
+Artifact 的部署源在 [charts/artifact](../../charts/artifact/README.md)，实际公开配置在 `charts/artifact/values-orbstack.yaml`。日常部署直接使用 Helm。
 
-`orbstack.json` 是无密钥资源清单。`prepare.py` 读取现有 `forge-tenant-env` 的服务令牌和 `storage-credentials`，生成专用管理/交接令牌、私有 CA 和服务证书。所有运行配置与凭据只保存在被 Git 忽略的 `.scratch/forge-orbstack/`，目录 0700，文件 0600。该目录需作为本机部署密钥材料保管；脚本重复执行保留已有 CA 与令牌。
+## 部署归属
 
-```sh
-python3 deploy/forge/prepare.py
-kubectl --context=orbstack apply -f .scratch/forge-orbstack/base-resources.json
-# 仅全新库首次初始化开启迁移。
-python3 deploy/forge/service.py --tenant TENANT_ID --project PROJECT_ID --migrate
-kubectl --context=orbstack apply -f .scratch/forge-orbstack/service-resources.json
-kubectl --context=orbstack -n artifact-storage rollout status deployment/artifact-forge
-# 首次迁移完成后关闭，配置校验自动触发重新部署。
-python3 deploy/forge/service.py --tenant TENANT_ID --project PROJECT_ID
-kubectl --context=orbstack apply -f .scratch/forge-orbstack/service-resources.json
-```
+三个服务各自维护 chart、环境 values 和独立 Helm release：
 
-Scope 精确允许指定租户及可选项目；租户本身不通配其项目。更换验收 scope 时重新运行 service.py，覆盖 allowlist，不累积旧范围。内部引用入口只监听同 Pod 的 loopback；公网 Service 仅暴露 TLS 8443，代理业务 HTTP，不暴露引用内部端口。
+- artifact-go：`charts/artifact`，release `artifact`。
+- forge-tenant-api：`charts/forge-tenant`，release `forge-tenant`；TLS 和 Storage worker 配置由该仓库维护。
+- forge-tenant-web：`charts/forge-tenant-web`，release `forge-tenant-web`；同源代理路由由该仓库维护。
 
-- Tenant endpoint：`https://forge-tenant-tls.forge-tenant-split.svc.cluster.local`。
-- Artifact/storage endpoint：`https://artifact-forge.artifact-storage.svc.cluster.local`。
-- tenant/web 需挂载本目录私有运行目录里的 `ca.crt`，保留原有信任根并追加该 CA，不能关闭验证。
-- tenant 使用独立 `bucket-management-token` 配置 Storage worker；只为本轮新建租户触发 bucket 开通，不自动 backfill 既有租户。
-- 本轮部署用于真实 session、租户 bucket 开通和 JSON 版本发布读取。未配置 STS issuer，grants 路由不启用。
-- 此部署未配置生产备份、容量与恢复目标；与四层隔离恢复验收分别记录。
+各仓库的 `values-orbstack.yaml` 和 chart README 提供各自的部署命令。Artifact 部署无需其他仓库的目录或源码。目前不需要联合发布，因此不引入 umbrella chart，也不在本仓脚本中升级其他服务。以后若需联合发布，应由上层 chart 声明版本化依赖。
 
-## 真实登录验收
+当前 namespace 为 `forge-tenant-split`。共享 JuiceFS 位于 `artifact-storage`；保留其 Deployment `storage`、Service `juicefs` 和 PVC `storage-data`。
 
-使用兄弟 `forge-tenant-web` 的 Playwright 和 tenant `.local/deployment.json` 私有登录配置。脚本启动独立无头浏览器，不使用用户已有浏览器会话。`prepare` 会新建验收租户和项目；`verify` 发布 JSON 版本、登记空文件元数据，并在缺少负例时新建由另一已激活账号管理的验收租户。这些验收数据会保留，文件登记按存储 TTL 回收。
+## 已有凭据
+
+现有 `artifact-runtime-credentials`、`artifact-integration-tls`、`artifact-integration-db`、`artifact-integration-db-init` 继续使用。私有备份位于 Git 忽略的 `.scratch/forge-orbstack/private/`。内部引用交接 token 已不再需要；数据库、S3 和 tenant 接入身份继续使用。
+
+## 本机验收
 
 ```sh
-FORGE_ACCEPTANCE_DIR="$PWD/.scratch/forge-orbstack" node deploy/acceptance/forge-login.cjs prepare
-# 使用输出 tenant/project 更新 service.py 的精确 allowlist 并等待部署完成。
-FORGE_ACCEPTANCE_DIR="$PWD/.scratch/forge-orbstack" node deploy/acceptance/forge-login.cjs verify
+kubectl --context=orbstack -n forge-tenant-split port-forward svc/forge-tenant-web 8483:80
+kubectl --context=orbstack -n artifact-storage port-forward svc/juicefs 19010:9000
 ```
 
-目录必须已存在且权限为 0700。可通过 `FORGE_CONFIG`、`FORGE_WEB_ROOT`、`CHROME_EXECUTABLE` 指定配置、前端路径及浏览器。报告不包含会话或凭据。实际验收见 [部署与登录记录](../../docs/forge-orbstack-login-20261016.md)。
+两个转发分别保持运行。Forge 登录 Origin 为 `http://127.0.0.1:8483`；metadata 走 `/artifact` 和 `/storage`，客户端 S3 直传走 `http://127.0.0.1:19010`。用户身份与 tenant/project scope 仍由 tenant API 核实；进程内文件引用按请求 scope 查询。验收对象来自 `deploy/acceptance/forge-scope.json`，它只是测试输入。STS issuer 的 bucket 基础权限不变。
+
+验收工具允许通过 `FORGE_WEB_ROOT` 和 `FORGE_CONFIG` 指定浏览器依赖与私有登录配置路径；它们只用于测试，不是部署依赖。保留已有版本的验证命令：
+
+```sh
+FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/redeploy-acceptance.json" \
+  node deploy/acceptance/forge-redeploy.cjs --verify
+```
+
+旧 `forge-login.cjs prepare` 创建新租户，不适用于当前固定文件 scope。验收与退役结果见 [验收记录](../../docs/deployment-consolidation-20261016.md)。旧六个 Deployment/Service 已退役；原 PVC、Secrets、双库 dump 和恢复清单保留在私有 `retired-backup/`，详见[审计记录](../../docs/old-deployment-audit-20261016.md)。

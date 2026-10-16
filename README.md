@@ -1,6 +1,6 @@
 # artifact-go
 
-物料集合、版本与文件引用服务。**T01–T11 已完成，T12 本地及真实 JuiceFS 验收已通过**；已新增可选 Forge session 接入与有效租户成员校验；部署及真实浏览器登录仍需另行验收，T12 不标记为生产完整通过。见 [T12 验收记录](docs/t12-acceptance-20261015.md)。
+物料集合、版本与文件引用服务。**T01–T11 已完成，T12 本地及真实 JuiceFS 验收已通过**；已新增可选 Forge session 接入与有效租户成员校验；OrbStack 真实登录与文件链路已验收，生产验收另行安排。见 [T12 验收记录](docs/t12-acceptance-20261015.md)。
 
 已实现的操作：
 
@@ -59,14 +59,14 @@ MySQL连接必须使用`parseTime=true&loc=UTC`，保证不同机器读取同一
 
 resolver必须认证本次请求，核对选择的精确租户/项目，并返回`UserID`、`TenantID`、可选`ProjectID`及`OwnershipActive`或`OwnershipDeleted`。租户ID为1–64位ASCII字母、数字、`_`或`-`，保留大小写；与现有租户系统生成的`t_`加24位十六进制ID兼容。SDK里的scope Header只表达选择，不是身份依据。已删除scope需要接入方仍明确授权历史访问；本服务允许读取、归档及现有版本管理，拒绝新建。
 
-Forge 用户可使用新增 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。此实现尚未部署到已有租户环境。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
+Forge 用户可使用新增 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。此实现已部署本机 OrbStack，配置和重部署入口见 [Forge 部署](deploy/forge/README.md)。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
 
 ```go
 // resolver is the deployment's verified service.IdentityResolver.
 err := app.Run(ctx, app.Options{}, service.BuildWithIdentity(resolver))
 ```
 
-既有测试保留受控 Bearer 的通用装配验证。新增 Forge 进程测试覆盖启动、请求和 SIGTERM 退出；显式设置 `ARTIFACT_TEST_TENANT_REPO` 后，跨仓库测试调用真实 tenant HTTP/session 校验与独立数据库。测试会话仅在隔离数据库生成，不代表真实 Casdoor 浏览器登录已验收，详见[本轮记录](docs/tenant-integration-acceptance-20261016.md)。
+既有测试保留受控 Bearer 的通用装配验证。新增 Forge 进程测试覆盖启动、请求和 SIGTERM 退出；显式设置 `ARTIFACT_TEST_TENANT_REPO` 后，跨仓库测试调用真实 tenant HTTP/session 校验与独立数据库。这些自动化测试的会话在隔离数据库生成；另有[真实 Casdoor 登录与文件联调](docs/orbstack-forge-integration-20261016.md)及[重部署验收](docs/deployment-consolidation-20261016.md)。
 
 配置样例在`conf/server/config.toml`：`ARTIFACT_DATABASE_URL`供PostgreSQL连接，默认监听`127.0.0.1:18080`；MySQL使用框架Host/Port/User/Password/DB字段。AutoMigrate默认关闭，首次受控建表需显式开启；当前创建`artifacts`、`versions`、`create_requests`、`aliases`、`retention_policies`、`background_tasks`、`drafts`、`draft_files`、`draft_create_requests`、`reference_changes`、`version_files`十一张表及归属外键。不要把凭证提交到Git。
 
@@ -88,6 +88,7 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 
 ## 设计与进度
 
+- [服务消费者接入设计：集合幂等创建与可信服务身份（待实施）](docs/service-consumer-design-20261016.md)
 - [父Spec #1](https://github.com/FlyTOmeLight/artifact-go/issues/1)
 - [实施顺序](docs/implementation-plan-20261015.md)
 - [代码结构及职责](docs/codebase-design-20261014.md)
@@ -95,13 +96,13 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 - [T00验证](docs/t00-review-20261015.md)
 - [T01交付记录](docs/t01-acceptance-20261015.md)
 
-本机 JuiceFS 部署与探针资料保留实际验收依据；当前文件业务链路已接入。T01–T11 与 T12 本地验收记录见实施计划，真实身份和生产接入仍待验收。
+本机 JuiceFS 部署与探针资料保留实际验收依据；当前文件业务链路已接入。T01–T11 与 T12 本地验收记录见实施计划，真实 Forge 身份已完成本机验收，生产接入仍待验收。
 
 ## T02 发布边界
 
 CreateVersion必须提供1–64字符requestKey。同集合、同可信用户、同键相同参数重放原结果，异参409；不同用户的请求键独立。整数从1递增，SemVer初值由集合决定，后续省略bump等同patch。归档或归属删除后仍可确认成功请求；墓碑重放返回410及原VersionIdentity，SDK可用errors.As取得VersionDeletedError。列表和普通读取只返回ready版本。
 
-支持直接 payload/annotations JSON 对象（省略默认{}，null拒绝）及完整 files 清单，或指定 draftID/expectedDraftRevision 发布；两种来源互斥。支持发布时设置 aliases 和 protected。文件字节由客户端直接上传到对象存储，artifact 经独立 storage 引用交接后提交版本。
+支持直接 payload/annotations JSON 对象（省略默认{}，null拒绝）及完整 files 清单，或指定 draftID/expectedDraftRevision 发布；两种来源互斥。支持发布时设置 aliases 和 protected。文件字节由客户端直接上传到对象存储，artifact 通过进程内文件引用接口绑定 storage 文件后提交版本；两域仍使用各自的数据库事务。
 
 [Version]部署配置控制MaxPayloadBytes（默认262144）、MaxAnnotationsBytes（65536）、MaxRequestBodyBytes（8388608）和MaxFilesPerVersion（1000，草稿与版本共用）。组合构造可传Options.Version，nil使用默认；显式配置必须完整提供四个正值。字段按json.Compact后的UTF-8字节计算，整包按实际流式读取计算。成功重放不重新受字段大小限制，但仍受整包限制；集合创建也使用同一整包限制。
 
@@ -157,7 +158,7 @@ bin/artifact-maintenance --domain artifact --db-config /secure/artifact-db.json 
 
 ## T07 文件生命周期
 
-storage现在可独立装配：`service.NewStorage(ctx, storageDB, StorageOptions{...})`只接收storage数据库、S3配置和两个可信身份验证依赖。`BuildStorageWithVerifiers`用于独立进程；combined使用`Options.StorageDB`、`StorageAutoMigrate`、`StorageFiles`和`StorageWorker`。独立Build从`StorageDB`初始化另一组连接，遵守它自己的AutoMigrate设置；两域数据库都由调用方或Runtime拥有。只配置Storage而不配置StorageDB时仍仅启用T06 bucket管理。
+storage 与 artifact 由同一个服务进程装配。`Options.StorageDB`、`StorageAutoMigrate`、`StorageFiles` 和 `StorageWorker` 分别控制 storage 数据库、迁移、文件限制与回收任务；`DB` 与 `StorageDB` 保留独立连接和事务。两域数据库都由调用方或 Runtime 拥有。只配置 Storage 而不配置 StorageDB 时仍仅启用 T06 bucket 管理。
 
 storage模块迁移`storage_files`、`storage_tasks`和T09新增的`storage_references`，不读取artifact表，不建跨域外键。普通文件操作经过IdentityResolver，bucket管理仍经过TenantServiceVerifier。默认单文件上限1 GiB、准备期限24小时、请求体8 MiB；显式StorageFiles配置需三个值均为正。配置样例见`conf/server/config.toml`。
 
@@ -189,9 +190,11 @@ STS实际到期不得超过锁内确定的截止时间；签发前扣5秒预算�
 
 ## T09 持久引用交接与单文件发布
 
-storage 内部四个 HTTP/JSON 操作负责文件元数据查询、Bind、Release 和引用状态查询。它们安装在独立监听地址，使用服务 Bearer 凭据映射稳定 ConsumerID 与精确 scope allowlist，不进入用户 storagev1 SDK 或公开路由。不同 token 可以映射同一 consumer 以支持轮换；非回环监听与客户端端点要求 TLS。
+当前单服务实现及部署验证见[进程内文件引用](docs/inprocess-storage-20261016.md)。
 
-artifact 配置 `StorageHandoff`，storage 配置 `StorageInternal`。combined 也通过 HTTP 调用；artifact-only 不需要 storage 数据库或 S3 管理凭据。内部监听在公开业务入口前启动，退出时停止新请求并等现有 handler 退出后再释放数据库。示例见 `conf/server/config.toml`。
+文件元数据查询、Bind、Release 和引用状态查询通过 `internal/app/storage.ReferenceService` 进程内调用，由 storage 的 `BindingService` 执行。业务位于 `internal/app/storage`，S3 客户端位于 `internal/client/storage`，storage 库表模型位于 `internal/table/storage`；引用类型直接归 storage app，不再单设 `fileref` 包。服务不再为文件引用启动内部 HTTP 监听，也不需要引用交接 token、TLS 或 scope allowlist。公开文件操作仍验证用户身份和精确租户/项目归属，租户 bucket 管理保留独立的服务身份验证。
+
+启用 StorageDB 时，`StorageConsumerID` 必须显式提供非空且至多 64 字节的值。它固定引用的持久归属，构造绑定服务时注入；请求不能自行选择。已有部署必须保留原值（OrbStack 为 `artifact-orbstack`），以便继续查询和释放已有引用。示例见 `conf/server/config.toml`。
 
 创建版本可携带已确认文件清单，例如单文件：`files: [{"path":"model.bin","fileID":"..."}]`。artifact 先持久保存 ReferenceChange 计划，再调用 storage Bind，最后在本地事务提交版本清单、编号、alias、retention 和成功回执。业务清单仅保存 FileID、ReferenceID 和确认元数据，不保存 bucket/key。编号仍只在最终成功事务中分配。
 
@@ -213,4 +216,4 @@ artifact 配置 `StorageHandoff`，storage 配置 `StorageInternal`。combined �
 
 ## T12 交付验收
 
-完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。人工 Casdoor 浏览器登录、生产网络/密钥与生产恢复目标保留为待验收；未自动升级既有部署。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。
+完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。本机真实 Casdoor 登录、文件链路和[重复部署](docs/deployment-consolidation-20261016.md)已通过；生产网络/密钥与生产恢复目标仍待验收。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。

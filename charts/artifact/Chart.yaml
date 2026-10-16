@@ -1,0 +1,5 @@
+apiVersion: v2
+name: artifact
+description: Artifact and storage service with existing credential references
+type: application
+version: 0.2.1
