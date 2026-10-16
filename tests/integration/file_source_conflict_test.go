@@ -8,8 +8,8 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	versionapp "github.com/FlyTOmeLight/artifact-go/internal/app/version"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
@@ -70,10 +70,10 @@ func TestDraftPublicationSourceConflictDecision(t *testing.T) {
 			// An expired previous Bind plan must be retained before the source rejection replaces it.
 			expiry := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
 			plan := versionapp.ReferencePlan{
-				Scope: storagehandoff.Scope{TenantID: tenantA},
+				Scope: storage.Scope{TenantID: tenantA},
 				References: []versionapp.PlannedReference{
 					{
-						Reference: storagehandoff.Reference{
+						Reference: storage.Reference{
 							ReferenceID: fmt.Sprintf("old-%s", mode),
 							FileID:      "file-one",
 						},

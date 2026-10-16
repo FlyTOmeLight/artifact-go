@@ -5,15 +5,15 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
 )
 
 func TestFileRetentionPreservesDraftAndNewVersionReferences(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
-		client, storageDB, handoff := fileDraftHTTP(t, database, nil)
+		client, storageDB, references := fileDraftHTTP(t, database, nil)
 		ctx := identity(t, "tenant")
 		a := create(t, client, ctx, "file-retention", "model")
 		ap := api.ArtifactPath{ArtifactID: a.ID}
@@ -56,7 +56,7 @@ func TestFileRetentionPreservesDraftAndNewVersionReferences(t *testing.T) {
 			&api.GetVersionRequest{VersionPath: api.VersionPath{ArtifactPath: ap, VersionID: old.ID}},
 		)
 		expectError(t, err, 404, "")
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		var oldRow table.Version
 		if err = database.First(&oldRow, "id = ?", old.ID).Error; err != nil || oldRow.State != "deleted" {
 			t.Fatalf("retired version %+v %v", oldRow, err)

@@ -20,9 +20,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 )
 

@@ -12,8 +12,8 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
 )
 

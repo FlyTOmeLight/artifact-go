@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,12 +18,11 @@ import (
 	"github.com/FlyTOmeLight/artifact-go/internal/app/draft"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/resolve"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/retention"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
+	storageclient "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	storageclient "github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 )
 
@@ -38,8 +38,7 @@ type Options struct {
 	StorageFiles          *StorageFileConfig
 	StorageWorker         *StorageWorkerConfig
 	StorageGrants         *StorageGrantConfig
-	StorageInternal       *StorageInternalConfig
-	StorageHandoff        *StorageHandoffConfig
+	StorageConsumerID     string
 	TenantServiceVerifier TenantServiceVerifier
 }
 
@@ -56,7 +55,6 @@ type Service struct {
 	retention      *retention.Controller
 	resolve        *resolve.Controller
 	worker         *backgroundtask.Worker
-	handoff        *storagehandoff.Client
 	mu             sync.Mutex
 	cancel         context.CancelFunc
 	done           chan struct{}
@@ -66,16 +64,14 @@ var _ host.Service = (*Service)(nil)
 
 // New constructs the artifact service. The caller closes database after HTTP drains.
 func New(ctx context.Context, database *db.DB, options Options) (*Service, error) {
-	if options.StorageInternal != nil && options.StorageDB == nil {
-		return nil, errors.New("storage internal listener requires StorageDB")
-	}
-	var handoff *storagehandoff.Client
-	if options.StorageHandoff != nil {
-		var err error
-		handoff, err = storagehandoff.NewClient(options.StorageHandoff.clientConfig())
-		if err != nil {
-			return nil, err
+	var references storage.ReferenceService
+	if options.StorageDB != nil {
+		if strings.TrimSpace(options.StorageConsumerID) == "" || len(options.StorageConsumerID) > 64 {
+			return nil, errors.New(
+				"StorageConsumerID must be a nonempty stable identity of at most 64 bytes",
+			)
 		}
+		references = storage.NewBindingService(options.StorageDB, options.StorageConsumerID)
 	}
 	if options.StorageDB == nil && options.Storage != nil && options.Storage.GrantIssuer != nil {
 		return nil, errors.New("storage grant issuer requires StorageDB")
@@ -100,7 +96,6 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 				Files:                 options.StorageFiles,
 				Worker:                options.StorageWorker,
 				Grants:                options.StorageGrants,
-				Internal:              options.StorageInternal,
 			},
 		)
 		if err != nil {
@@ -159,7 +154,7 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 	if err != nil {
 		return nil, err
 	}
-	worker.WithHandoff(handoff)
+	worker.WithReferences(references)
 	recheck := func(r *http.Request) (scope.Identity, error) {
 		i, err := options.IdentityResolver(r)
 		if err != nil {
@@ -187,10 +182,9 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 					MaxAnnotationsBytes: limits.MaxAnnotationsBytes,
 					MaxRequestBodyBytes: limits.MaxRequestBodyBytes,
 				},
-			).WithHandoff(handoff, recheck),
+			).WithReferences(references, recheck),
 		),
 		worker:    worker,
-		handoff:   handoff,
 		resolve:   resolve.NewController(resolve.NewService(database, limits.MaxRequestBodyBytes)),
 		retention: retention.NewController(retention.NewService(database, limits.MaxRequestBodyBytes)),
 		aliases:   alias.NewController(alias.NewService(database, limits.MaxRequestBodyBytes)),
@@ -203,7 +197,7 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 					MaxAnnotationsBytes: limits.MaxAnnotationsBytes,
 					MaxRequestBodyBytes: limits.MaxRequestBodyBytes,
 				},
-			).WithHandoff(handoff, recheck),
+			).WithReferences(references, recheck),
 		),
 	}, nil
 }
@@ -250,9 +244,6 @@ func (s *Service) Start(ctx context.Context) error {
 }
 
 func (s *Service) Stop(ctx context.Context) error {
-	if s.handoff != nil {
-		defer s.handoff.Close()
-	}
 	s.mu.Lock()
 	cancel, done := s.cancel, s.done
 	s.mu.Unlock()

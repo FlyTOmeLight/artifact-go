@@ -1,9 +1,9 @@
 package integration_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,24 +11,23 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	storageapi "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 	"github.com/FlyTOmeLight/artifact-go/service"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
 )
 
-// The databases are deliberately separate. Only HTTP carries reference handoffs.
+// The databases are deliberately separate. Reference calls remain in process.
 func fileDraftHTTP(
 	t *testing.T,
 	database *db.DB,
 	afterBind func(),
 	limits ...*service.VersionConfig,
-) (*api.Client, *db.DB, *storagehandoff.Client) {
+) (*api.Client, *db.DB, storage.ReferenceService) {
 	t.Helper()
 	driver := db.DriverPostgreSQL
 	if database.Dialector.Name() == "mysql" {
@@ -38,27 +37,29 @@ func fileDraftHTTP(
 	if err := st.Migrate(t.Context(), storageDB); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := storagehandoff.NewHandler(
-		storage.NewBindingService(storageDB),
-		[]storagehandoff.Consumer{
-			{
-				ID:     "artifact",
-				Tokens: []string{"fixture-internal"},
-				Scopes: []storagehandoff.Scope{{TenantID: tenantA}},
-			},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
+	binding := &afterBindReferences{
+		ReferenceService: storage.NewBindingService(storageDB, "artifact"),
+		afterBind:        afterBind,
 	}
-	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler.ServeHTTP(w, r)
-		if afterBind != nil && r.URL.Path == "/internal/v1/storage/references/bind" {
-			afterBind()
-		}
-	})
-	client, _, handoff := publicationHTTP(t, database, wrapped, limits...)
-	return client, storageDB, handoff
+	client, _, references := publicationHTTP(t, database, binding, limits...)
+	return client, storageDB, references
+}
+
+type afterBindReferences struct {
+	storage.ReferenceService
+	afterBind func()
+}
+
+func (b *afterBindReferences) Bind(
+	ctx context.Context,
+	scope storage.Scope,
+	refs []storage.Reference,
+) ([]storage.BindResult, error) {
+	result, err := b.ReferenceService.Bind(ctx, scope, refs)
+	if b.afterBind != nil {
+		b.afterBind()
+	}
+	return result, err
 }
 
 func draftReadyFile(t *testing.T, database *db.DB) string {
@@ -79,13 +80,13 @@ func draftRows(t *testing.T, database *db.DB, id string) []table.DraftFile {
 	return rows
 }
 
-func runReferenceTasks(t *testing.T, database *db.DB, handoff *storagehandoff.Client) {
+func runReferenceTasks(t *testing.T, database *db.DB, references storage.ReferenceService) {
 	t.Helper()
 	worker, err := backgroundtask.New(database, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker.WithHandoff(handoff)
+	worker.WithReferences(references)
 	for range 20 {
 		claim, err := worker.Claim(t.Context())
 		if err != nil {
@@ -195,7 +196,7 @@ func TestFileDraftFourPublicationFlows(t *testing.T) {
 
 func TestFileDraftReuseRenameRemoveAndLastRelease(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
-		client, storageDB, handoff := fileDraftHTTP(t, database, nil)
+		client, storageDB, references := fileDraftHTTP(t, database, nil)
 		ctx := identity(t, "tenant")
 		a := create(t, client, ctx, "reuse", "model")
 		ap := api.ArtifactPath{ArtifactID: a.ID}
@@ -270,7 +271,7 @@ func TestFileDraftReuseRenameRemoveAndLastRelease(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		var held st.StorageFile
 		if err := storageDB.First(&held, "id = ?", file).Error; err != nil || held.State != "bound" {
 			t.Fatalf("shared file %+v %v", held, err)
@@ -335,7 +336,7 @@ func TestFileDraftReuseRenameRemoveAndLastRelease(t *testing.T) {
 		if err := storageDB.First(&held, "id = ?", file).Error; err != nil || held.State != "bound" {
 			t.Fatalf("release before delivery %+v %v", held, err)
 		}
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		if err := storageDB.First(&held, "id = ?", file).Error; err != nil || held.State != "deleting" {
 			t.Fatalf("last release %+v %v", held, err)
 		}
@@ -370,7 +371,7 @@ func TestFileDraftReuseRenameRemoveAndLastRelease(t *testing.T) {
 			Error; err != nil {
 			t.Fatal(err)
 		}
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		var remaining int64
 		if err := database.Model(&table.Version{}).
 			Where("artifact_id = ? AND state = ?", a.ID, "deleting").
@@ -389,7 +390,7 @@ func TestFileDraftConcurrentEditorsCanSaveLosingAttachmentsAsNewDraft(t *testing
 		unblock := func() { releaseOnce.Do(func() { close(release) }) }
 		t.Cleanup(unblock)
 		var barrier atomic.Bool
-		client, storageDB, handoff := fileDraftHTTP(t, database, func() {
+		client, storageDB, references := fileDraftHTTP(t, database, func() {
 			if barrier.Load() {
 				entered <- struct{}{}
 				<-release
@@ -501,7 +502,7 @@ func TestFileDraftConcurrentEditorsCanSaveLosingAttachmentsAsNewDraft(t *testing
 		if len(saved.Files) != 1 || saved.Files[0].FileID != files[loser] {
 			t.Fatalf("save-as %+v", saved)
 		}
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		for _, file := range files {
 			var row st.StorageFile
 			if err := storageDB.First(&row, "id = ?", file).Error; err != nil || row.State != "bound" {
@@ -803,7 +804,7 @@ func TestFileDraftSuccessfulReceiptsSurviveLowerLimits(t *testing.T) {
 			MaxAnnotationsBytes: 100,
 			MaxRequestBodyBytes: 4096,
 		}
-		client, _, handoff := publicationHTTP(t, database, remote, limits)
+		client, _, references := publicationHTTP(t, database, remote, limits)
 		ctx := identity(t, "tenant")
 		a := create(t, client, ctx, "lower-limits", "model")
 		ap := api.ArtifactPath{ArtifactID: a.ID}
@@ -896,11 +897,11 @@ func TestFileDraftSuccessfulReceiptsSurviveLowerLimits(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		worker.WithHandoff(handoff)
+		worker.WithReferences(references)
 		if err := worker.Scan(t.Context()); err != nil {
 			t.Fatal(err)
 		}
-		runReferenceTasks(t, database, handoff)
+		runReferenceTasks(t, database, references)
 		var committed int64
 		if err := database.Model(&table.ReferenceChange{}).
 			Where("artifact_id = ? AND state = ?", a.ID, "committed").

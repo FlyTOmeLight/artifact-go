@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
-	backend "github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	backend "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 func TestStorageGrantAdapterLive(t *testing.T) {

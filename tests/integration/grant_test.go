@@ -13,7 +13,7 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 	"github.com/FlyTOmeLight/artifact-go/service"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"

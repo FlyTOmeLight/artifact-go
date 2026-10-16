@@ -6,9 +6,9 @@ import (
 	"github.com/FlyTOmeLight/server-go/db"
 	core "github.com/FlyTOmeLight/server-go/pkg"
 
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 )
 

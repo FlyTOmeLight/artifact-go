@@ -12,14 +12,20 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
-	handoff "github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 )
 
-// BindingService owns storage-local reference transactions; callers authenticate the consumer.
-type BindingService struct{ database *db.DB }
+// BindingService owns storage-local reference transactions for one stable consumer.
+type BindingService struct {
+	database   *db.DB
+	consumerID string
+}
 
-func NewBindingService(database *db.DB) *BindingService { return &BindingService{database: database} }
+func NewBindingService(database *db.DB, consumerID string) *BindingService {
+	return &BindingService{database: database, consumerID: consumerID}
+}
+
+var _ ReferenceService = (*BindingService)(nil)
 
 func bindingError(err error) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -32,11 +38,11 @@ func bindingError(err error) error {
 	return serrors.NewError(503, "StorageUnavailable", "storage database is unavailable")
 }
 
-func bindingIdentity(target handoff.Scope) scope.Identity {
+func bindingIdentity(target Scope) scope.Identity {
 	return scope.Identity{TenantID: target.TenantID, ProjectID: target.ProjectID}
 }
 
-func bindingFiles(tx *db.DB, target handoff.Scope, ids []string) (map[string]table.StorageFile, error) {
+func bindingFiles(tx *db.DB, target Scope, ids []string) (map[string]table.StorageFile, error) {
 	sorted := append([]string(nil), ids...)
 	sort.Strings(sorted)
 	files := make(map[string]table.StorageFile, len(ids))
@@ -53,9 +59,9 @@ func bindingFiles(tx *db.DB, target handoff.Scope, ids []string) (map[string]tab
 	return files, nil
 }
 
-func confirmation(row table.StorageFile) handoff.ConfirmationMetadata {
+func confirmation(row table.StorageFile) ConfirmationMetadata {
 	out := response(row)
-	return handoff.ConfirmationMetadata{
+	return ConfirmationMetadata{
 		Size:              out.Size,
 		ContentType:       out.ContentType,
 		DeclaredChecksum:  out.DeclaredChecksum,
@@ -65,21 +71,20 @@ func confirmation(row table.StorageFile) handoff.ConfirmationMetadata {
 
 func (s *BindingService) Metadata(
 	ctx context.Context,
-	consumer string,
-	target handoff.Scope,
+	target Scope,
 	ids []string,
-) ([]handoff.FileMetadata, error) {
-	var result []handoff.FileMetadata
+) ([]FileMetadata, error) {
+	var result []FileMetadata
 	err := db.Transaction(ctx, s.database, fileOptions(), func(tx *db.DB) error {
 		files, err := bindingFiles(tx, target, ids)
 		if err != nil {
 			return err
 		}
-		result = make([]handoff.FileMetadata, len(ids))
+		result = make([]FileMetadata, len(ids))
 		for n, id := range ids {
 			row := files[id]
 			m := confirmation(row)
-			result[n] = handoff.FileMetadata{FileID: id, State: row.State, ConfirmationMetadata: m}
+			result[n] = FileMetadata{FileID: id, State: row.State, ConfirmationMetadata: m}
 		}
 		return nil
 	})
@@ -92,8 +97,8 @@ func (s *BindingService) Metadata(
 func findReference(
 	tx *db.DB,
 	consumer string,
-	ref handoff.Reference,
-	target handoff.Scope,
+	ref Reference,
+	target Scope,
 ) (table.StorageReference, error) {
 	var row table.StorageReference
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -110,13 +115,13 @@ func findReference(
 	return row, nil
 }
 
-func sortedReferences(refs []handoff.Reference) []handoff.Reference {
-	out := append([]handoff.Reference(nil), refs...)
+func sortedReferences(refs []Reference) []Reference {
+	out := append([]Reference(nil), refs...)
 	sort.Slice(out, func(i, j int) bool { return out[i].ReferenceID < out[j].ReferenceID })
 	return out
 }
 
-func referenceIDs(refs []handoff.Reference) []string {
+func referenceIDs(refs []Reference) []string {
 	ids := make([]string, len(refs))
 	for i, r := range refs {
 		ids[i] = r.FileID
@@ -133,8 +138,8 @@ func activeReferences(tx *db.DB, id string) (int64, error) {
 func createReference(
 	tx *db.DB,
 	consumer string,
-	target handoff.Scope,
-	ref handoff.Reference,
+	target Scope,
+	ref Reference,
 	state string,
 	now time.Time,
 ) (table.StorageReference, error) {
@@ -158,11 +163,10 @@ func createReference(
 
 func (s *BindingService) Bind(
 	ctx context.Context,
-	consumer string,
-	target handoff.Scope,
-	refs []handoff.Reference,
-) ([]handoff.BindResult, error) {
-	var result []handoff.BindResult
+	target Scope,
+	refs []Reference,
+) ([]BindResult, error) {
+	var result []BindResult
 	completed := false
 	err := db.Transaction(ctx, s.database, fileOptions(), func(tx *db.DB) error {
 		completed = false
@@ -175,7 +179,7 @@ func (s *BindingService) Bind(
 			return err
 		}
 		for _, ref := range sortedReferences(refs) {
-			row, e := findReference(tx, consumer, ref, target)
+			row, e := findReference(tx, s.consumerID, ref, target)
 			if e == nil {
 				if row.State == "released" {
 					return fileError(409, "ReferenceReleased", "released reference cannot be bound")
@@ -197,7 +201,7 @@ func (s *BindingService) Bind(
 			if !bindable {
 				return fileError(409, "FileNotBindable", "file cannot accept a new reference")
 			}
-			row, e = createReference(tx, consumer, target, ref, "active", now)
+			row, e = createReference(tx, s.consumerID, target, ref, "active", now)
 			if e != nil {
 				return e
 			}
@@ -215,9 +219,9 @@ func (s *BindingService) Bind(
 				files[file.ID] = file
 			}
 		}
-		result = make([]handoff.BindResult, len(refs))
+		result = make([]BindResult, len(refs))
 		for n, r := range refs {
-			result[n] = handoff.BindResult{
+			result[n] = BindResult{
 				ReferenceID: r.ReferenceID,
 				FileID:      r.FileID,
 				State:       "active",
@@ -236,8 +240,8 @@ func (s *BindingService) Bind(
 	return result, nil
 }
 
-func referenceStatus(ref handoff.Reference, row table.StorageReference, file table.StorageFile) handoff.Status {
-	out := handoff.Status{ReferenceID: ref.ReferenceID, FileID: ref.FileID, State: row.State}
+func referenceStatus(ref Reference, row table.StorageReference, file table.StorageFile) Status {
+	out := Status{ReferenceID: ref.ReferenceID, FileID: ref.FileID, State: row.State}
 	if row.State == "released" {
 		required := row.ReleaseRequiresDeletion
 		out.ReleaseRequiresDeletion = &required
@@ -248,11 +252,10 @@ func referenceStatus(ref handoff.Reference, row table.StorageReference, file tab
 
 func (s *BindingService) Release(
 	ctx context.Context,
-	consumer string,
-	target handoff.Scope,
-	refs []handoff.Reference,
-) ([]handoff.Status, error) {
-	var result []handoff.Status
+	target Scope,
+	refs []Reference,
+) ([]Status, error) {
+	var result []Status
 	completed := false
 	err := db.Transaction(ctx, s.database, fileOptions(), func(tx *db.DB) error {
 		completed = false
@@ -266,9 +269,9 @@ func (s *BindingService) Release(
 		}
 		rows := make(map[string]table.StorageReference, len(refs))
 		for _, ref := range sortedReferences(refs) {
-			row, e := findReference(tx, consumer, ref, target)
+			row, e := findReference(tx, s.consumerID, ref, target)
 			if errors.Is(e, gorm.ErrRecordNotFound) {
-				row, e = createReference(tx, consumer, target, ref, "released", now)
+				row, e = createReference(tx, s.consumerID, target, ref, "released", now)
 			}
 			if e != nil {
 				return e
@@ -298,7 +301,7 @@ func (s *BindingService) Release(
 			}
 			rows[ref.ReferenceID] = row
 		}
-		result = make([]handoff.Status, len(refs))
+		result = make([]Status, len(refs))
 		for n, r := range refs {
 			result[n] = referenceStatus(r, rows[r.ReferenceID], files[r.FileID])
 		}
@@ -316,11 +319,10 @@ func (s *BindingService) Release(
 
 func (s *BindingService) Statuses(
 	ctx context.Context,
-	consumer string,
-	target handoff.Scope,
-	refs []handoff.Reference,
-) ([]handoff.Status, error) {
-	var result []handoff.Status
+	target Scope,
+	refs []Reference,
+) ([]Status, error) {
+	var result []Status
 	err := db.Transaction(ctx, s.database, fileOptions(), func(tx *db.DB) error {
 		files, err := bindingFiles(tx, target, referenceIDs(refs))
 		if err != nil {
@@ -328,7 +330,7 @@ func (s *BindingService) Statuses(
 		}
 		rows := make(map[string]table.StorageReference, len(refs))
 		for _, ref := range sortedReferences(refs) {
-			row, e := findReference(tx, consumer, ref, target)
+			row, e := findReference(tx, s.consumerID, ref, target)
 			if errors.Is(e, gorm.ErrRecordNotFound) {
 				row.State = "absent"
 			} else if e != nil {
@@ -336,7 +338,7 @@ func (s *BindingService) Statuses(
 			}
 			rows[ref.ReferenceID] = row
 		}
-		result = make([]handoff.Status, len(refs))
+		result = make([]Status, len(refs))
 		for n, r := range refs {
 			result[n] = referenceStatus(r, rows[r.ReferenceID], files[r.FileID])
 		}

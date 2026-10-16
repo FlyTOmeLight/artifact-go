@@ -15,27 +15,27 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/reference"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 )
 
 // ReferencePlan is persisted before any Bind; failed attempts retain their original deadline.
 type PlannedReference struct {
-	storagehandoff.Reference
+	storage.Reference
 	OriginalExpiresAt time.Time `json:"originalExpiresAt"`
 }
 
 type ReferencePlan struct {
-	Scope      storagehandoff.Scope `json:"scope"`
-	References []PlannedReference   `json:"references"`
-	VersionID  string               `json:"versionID,omitempty"`
+	Scope      storage.Scope      `json:"scope"`
+	References []PlannedReference `json:"references"`
+	VersionID  string             `json:"versionID,omitempty"`
 }
 
-func (p ReferencePlan) ReferencePairs() []storagehandoff.Reference {
-	refs := make([]storagehandoff.Reference, len(p.References))
+func (p ReferencePlan) ReferencePairs() []storage.Reference {
+	refs := make([]storage.Reference, len(p.References))
 	for i, item := range p.References {
 		refs[i] = item.Reference
 	}
@@ -43,9 +43,9 @@ func (p ReferencePlan) ReferencePairs() []storagehandoff.Reference {
 }
 
 // Bind preserves every planned identity across partial batch success and retries.
-func (p ReferencePlan) Bind(ctx context.Context, client *storagehandoff.Client) ([]storagehandoff.BindResult, error) {
+func (p ReferencePlan) Bind(ctx context.Context, client storage.ReferenceService) ([]storage.BindResult, error) {
 	pairs := p.ReferencePairs()
-	out := make([]storagehandoff.BindResult, 0, len(pairs))
+	out := make([]storage.BindResult, 0, len(pairs))
 	for start := 0; start < len(pairs); start += 1000 {
 		batch, err := client.Bind(ctx, p.Scope, pairs[start:min(start+1000, len(pairs))])
 		if err != nil {
@@ -56,11 +56,11 @@ func (p ReferencePlan) Bind(ctx context.Context, client *storagehandoff.Client) 
 	return out, nil
 }
 
-func (s *Service) WithHandoff(
-	client *storagehandoff.Client,
+func (s *Service) WithReferences(
+	client storage.ReferenceService,
 	recheck func(*http.Request) (scope.Identity, error),
 ) *Service {
-	s.handoff, s.recheck = client, recheck
+	s.references, s.recheck = client, recheck
 	return s
 }
 
@@ -82,7 +82,7 @@ func unknown() error {
 	)
 }
 
-// prepareReferences checks replay twice: before remote work and inside the durable decision transaction.
+// prepareReferences checks replay twice: before storage work and inside the durable decision transaction.
 func (s *Service) prepareReferences(
 	c *core.Context,
 	identity scope.Identity,
@@ -162,11 +162,11 @@ func (s *Service) prepareReferences(
 	if _, err = ValidateFiles(files, s.limits.MaxFilesPerVersion); err != nil {
 		return nil, nil, err
 	}
-	if s.handoff == nil {
+	if s.references == nil {
 		return nil, nil, serrors.NewError(
 			503,
 			"StorageUnavailable",
-			"storage reference handoff is not configured",
+			"storage references are not configured",
 		)
 	}
 	if err = identity.RequireActive(); err != nil {
@@ -188,17 +188,17 @@ func (s *Service) prepareReferences(
 	deadline := started.Add(120 * time.Second)
 	prepareCtx, stopPrepare := context.WithDeadline(ctx, deadline)
 	defer stopPrepare()
-	target := storagehandoff.Scope{TenantID: identity.TenantID, ProjectID: identity.ProjectID}
-	var metadata []storagehandoff.FileMetadata
+	target := storage.Scope{TenantID: identity.TenantID, ProjectID: identity.ProjectID}
+	var metadata []storage.FileMetadata
 	for start := 0; start < len(files); start += 1000 {
 		end := min(start+1000, len(files))
 		ids := make([]string, end-start)
 		for i, f := range files[start:end] {
 			ids[i] = f.FileID
 		}
-		batch, e := s.handoff.Metadata(prepareCtx, target, ids)
+		batch, e := s.references.Metadata(prepareCtx, target, ids)
 		if e != nil {
-			return nil, nil, handoffError(e)
+			return nil, nil, referenceError(e)
 		}
 		metadata = append(metadata, batch...)
 	}
@@ -274,7 +274,7 @@ func (s *Service) prepareReferences(
 				plan.References = append(
 					plan.References,
 					PlannedReference{
-						Reference: storagehandoff.Reference{
+						Reference: storage.Reference{
 							ReferenceID: uuid.NewString(),
 							FileID:      files[i].FileID,
 						},
@@ -332,9 +332,9 @@ func (s *Service) prepareReferences(
 	}
 	bindCtx, cancel := context.WithDeadline(ctx, change.Deadline)
 	defer cancel()
-	bound, err := plan.Bind(bindCtx, s.handoff)
+	bound, err := plan.Bind(bindCtx, s.references)
 	if err != nil {
-		return nil, nil, s.abortFailure(ctx, identity, req, &change, handoffError(err))
+		return nil, nil, s.abortFailure(ctx, identity, req, &change, referenceError(err))
 	}
 	if len(bound) != len(files) {
 		return nil, nil, s.abortFailure(ctx, identity, req, &change, unknown())
@@ -372,10 +372,10 @@ func (s *Service) prepareReferences(
 	return &change, nil, nil
 }
 
-func handoffError(err error) error {
-	var e *storagehandoff.Error
-	if errors.As(err, &e) && !e.OutcomeUnknown && e.Status >= 400 && e.Status < 500 {
-		return serrors.NewError(e.Status, e.Code, "storage reference request rejected")
+func referenceError(err error) error {
+	var e *serrors.Error
+	if errors.As(err, &e) && e.Status >= 400 && e.Status < 500 {
+		return err
 	}
 	return serrors.NewError(503, "StorageUnavailable", "storage reference service unavailable")
 }
@@ -558,8 +558,8 @@ func LoadFiles(tx *db.DB, out *api.VersionResponse) error {
 // publicationPlan contains only this attempt's immutable manifest facts.
 type publicationPlan struct {
 	ReferencePlan
-	Paths []api.FileReference                   `json:"paths"`
-	Files []storagehandoff.ConfirmationMetadata `json:"files"`
+	Paths []api.FileReference            `json:"paths"`
+	Files []storage.ConfirmationMetadata `json:"files"`
 }
 
 // publicationSource runs under the Artifact lock shared by draft mutations.
@@ -664,7 +664,7 @@ func (s *Service) persistSourceConflict(
 			}
 			raw, e := json.Marshal(
 				ReferencePlan{
-					Scope: storagehandoff.Scope{
+					Scope: storage.Scope{
 						TenantID:  identity.TenantID,
 						ProjectID: identity.ProjectID,
 					},

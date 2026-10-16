@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
 	"sync"
 	"sync/atomic"
@@ -14,13 +13,14 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/conf"
 	"github.com/FlyTOmeLight/server-go/db"
+	serrors "github.com/FlyTOmeLight/server-go/errors"
 	"github.com/FlyTOmeLight/server-go/host"
 	"github.com/FlyTOmeLight/server-go/logger"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	versionapp "github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	"github.com/FlyTOmeLight/artifact-go/service"
@@ -28,7 +28,7 @@ import (
 )
 
 type publicationStorage struct {
-	malformedBind bool
+	unknownBind   bool
 	metadataCalls atomic.Int32
 	failBindAt    int32
 	expiry        time.Time
@@ -40,88 +40,93 @@ type publicationStorage struct {
 	deleted       atomic.Bool
 }
 
-func (p *publicationStorage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if r.Header.Get("Authorization") != "Bearer fixture-internal" {
-		w.WriteHeader(401)
-		return
-	}
-	if r.URL.Path == "/internal/v1/storage/reference-files/query" {
-		p.metadataCalls.Add(1)
-		var req storagehandoff.MetadataRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		size := int64(7)
-		out := []storagehandoff.FileMetadata{}
-		for _, id := range req.FileIDs {
-			out = append(
-				out,
-				storagehandoff.FileMetadata{
-					FileID: id,
-					State:  "ready",
-					ConfirmationMetadata: storagehandoff.ConfirmationMetadata{
-						Size:              &size,
-						ContentType:       "text/plain",
-						OriginalExpiresAt: p.expiry,
-					},
+func (p *publicationStorage) Metadata(
+	_ context.Context,
+	_ storage.Scope,
+	ids []string,
+) ([]storage.FileMetadata, error) {
+	p.metadataCalls.Add(1)
+	size := int64(7)
+	out := []storage.FileMetadata{}
+	for _, id := range ids {
+		out = append(
+			out,
+			storage.FileMetadata{
+				FileID: id,
+				State:  "ready",
+				ConfirmationMetadata: storage.ConfirmationMetadata{
+					Size:              &size,
+					ContentType:       "text/plain",
+					OriginalExpiresAt: p.expiry,
 				},
-			)
-		}
-		_ = json.NewEncoder(w).Encode(out)
-		return
+			},
+		)
 	}
-	var req storagehandoff.ReferencesRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
-	if r.URL.Path == "/internal/v1/storage/references/bind" {
-		if p.malformedBind {
-			w.WriteHeader(409)
-			_, _ = w.Write([]byte(`not a valid error response`))
-			return
-		}
-		if p.bindCalls.Add(1) == p.failBindAt {
-			w.WriteHeader(409)
-			_, _ = w.Write([]byte(`{"code":"FileNotBindable","message":"fixture rejection"}`))
-			return
-		}
-		p.mu.Lock()
-		for _, ref := range req.References {
-			p.refs[ref.ReferenceID] = "active"
-		}
-		p.mu.Unlock()
-		if p.beforeBind != nil {
-			p.beforeBind()
-		}
-		size := int64(7)
-		out := []storagehandoff.BindResult{}
-		for _, ref := range req.References {
-			out = append(
-				out,
-				storagehandoff.BindResult{
-					ReferenceID: ref.ReferenceID,
-					FileID:      ref.FileID,
-					State:       "active",
-					File: storagehandoff.ConfirmationMetadata{
-						Size:              &size,
-						ContentType:       "text/plain",
-						OriginalExpiresAt: p.expiry,
-					},
+	return out, nil
+}
+
+func (p *publicationStorage) Bind(
+	_ context.Context,
+	_ storage.Scope,
+	refs []storage.Reference,
+) ([]storage.BindResult, error) {
+	if p.unknownBind {
+		return nil, serrors.NewError(503, "StorageOutcomeUnknown", "controlled uncertain commit")
+	}
+	if p.bindCalls.Add(1) == p.failBindAt {
+		return nil, serrors.NewError(409, "FileNotBindable", "fixture rejection")
+	}
+	p.mu.Lock()
+	for _, ref := range refs {
+		p.refs[ref.ReferenceID] = "active"
+	}
+	p.mu.Unlock()
+	if p.beforeBind != nil {
+		p.beforeBind()
+	}
+	size := int64(7)
+	out := []storage.BindResult{}
+	for _, ref := range refs {
+		out = append(
+			out,
+			storage.BindResult{
+				ReferenceID: ref.ReferenceID,
+				FileID:      ref.FileID,
+				State:       "active",
+				File: storage.ConfirmationMetadata{
+					Size:              &size,
+					ContentType:       "text/plain",
+					OriginalExpiresAt: p.expiry,
 				},
-			)
-		}
-		_ = json.NewEncoder(w).Encode(out)
-		return
+			},
+		)
 	}
-	if r.URL.Path == "/internal/v1/storage/references/release" {
-		p.releaseCalls.Add(1)
-		p.mu.Lock()
-		for _, ref := range req.References {
-			p.refs[ref.ReferenceID] = "released"
-		}
-		p.mu.Unlock()
+	return out, nil
+}
+
+func (p *publicationStorage) Release(
+	ctx context.Context,
+	scope storage.Scope,
+	refs []storage.Reference,
+) ([]storage.Status, error) {
+	p.releaseCalls.Add(1)
+	p.mu.Lock()
+	for _, ref := range refs {
+		p.refs[ref.ReferenceID] = "released"
 	}
-	out := []storagehandoff.Status{}
+	p.mu.Unlock()
+	return p.Statuses(ctx, scope, refs)
+}
+
+func (p *publicationStorage) Statuses(
+	_ context.Context,
+	_ storage.Scope,
+	refs []storage.Reference,
+) ([]storage.Status, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	for _, ref := range req.References {
+	out := []storage.Status{}
+	for _, ref := range refs {
 		state := p.refs[ref.ReferenceID]
 		if state == "" {
 			state = "absent"
@@ -129,7 +134,7 @@ func (p *publicationStorage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requires := true
 		out = append(
 			out,
-			storagehandoff.Status{
+			storage.Status{
 				ReferenceID:             ref.ReferenceID,
 				FileID:                  ref.FileID,
 				State:                   state,
@@ -138,45 +143,25 @@ func (p *publicationStorage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 		)
 	}
-	_ = json.NewEncoder(w).Encode(out)
+	return out, nil
 }
 
 func publicationHTTP(
 	t *testing.T,
 	database *db.DB,
-	p http.Handler,
+	p storage.ReferenceService,
 	limits ...*service.VersionConfig,
-) (*api.Client, *httptest.Server, *storagehandoff.Client) {
+) (*api.Client, *httptest.Server, storage.ReferenceService) {
 	t.Helper()
-	remote := httptest.NewServer(p)
-	t.Cleanup(remote.Close)
-	hclient, err := storagehandoff.NewClient(
-		storagehandoff.ClientConfig{Endpoint: remote.URL, Token: "fixture-internal"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(hclient.Close)
+	hclient := p
 	var versionLimits *service.VersionConfig
 	if len(limits) > 0 {
 		versionLimits = limits[0]
 	}
-	svc, err := service.New(
-		t.Context(),
-		database,
-		service.Options{
-			IdentityResolver: resolve,
-			Version:          versionLimits,
-			AutoMigrate:      true,
-			StorageHandoff: &service.StorageHandoffConfig{
-				Endpoint: remote.URL,
-				Token:    "fixture-internal",
-			},
-		},
-	)
-	if err != nil {
+	if err := table.Migrate(t.Context(), database); err != nil {
 		t.Fatal(err)
 	}
+	svc := &referenceFixture{database: database, references: p, limits: versionLimits}
 	manager, err := conf.NewManagerFromConfig(
 		&conf.Config{AppName: "reference-test", AppCode: 100, RunMode: conf.RunModeTest},
 	)
@@ -202,7 +187,7 @@ func publicationHTTP(
 func TestReferencePublicationLifecycle(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		p := &publicationStorage{expiry: time.Now().UTC().Add(time.Hour), refs: map[string]string{}}
-		client, _, handoff := publicationHTTP(t, database, p)
+		client, _, references := publicationHTTP(t, database, p)
 		ctx := identity(t, "tenant")
 		a := create(t, client, ctx, "file-publication", "model")
 		req := &api.CreateVersionRequest{
@@ -256,7 +241,7 @@ func TestReferencePublicationLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		worker.WithHandoff(handoff)
+		worker.WithReferences(references)
 		task, err := worker.Claim(t.Context())
 		if err != nil || task == nil {
 			t.Fatalf("claim %v", err)
@@ -364,7 +349,7 @@ func TestReferencePublicationAbortAndRetry(t *testing.T) {
 func TestReferencePublicationExpiredAttempt(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		p := &publicationStorage{expiry: time.Now().UTC().Add(time.Hour), refs: map[string]string{}}
-		client, _, handoff := publicationHTTP(t, database, p)
+		client, _, references := publicationHTTP(t, database, p)
 		ctx := identity(t, "tenant")
 		a := create(t, client, ctx, "file-expire", "model")
 		entered, release := make(chan struct{}), make(chan struct{})
@@ -397,7 +382,7 @@ func TestReferencePublicationExpiredAttempt(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		worker.WithHandoff(handoff)
+		worker.WithReferences(references)
 		if err = worker.Scan(t.Context()); err != nil {
 			t.Fatal(err)
 		}
@@ -493,14 +478,14 @@ func TestReferencePlanPartialBatchCompensation(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		p := &publicationStorage{expiry: time.Now().Add(-time.Hour), refs: map[string]string{}, failBindAt: 2}
 		p.deleted.Store(true)
-		client, _, handoff := publicationHTTP(t, database, p)
+		client, _, references := publicationHTTP(t, database, p)
 		a := create(t, client, identity(t, "tenant"), "partial-bind", "model")
-		plan := versionapp.ReferencePlan{Scope: storagehandoff.Scope{TenantID: tenantA}}
+		plan := versionapp.ReferencePlan{Scope: storage.Scope{TenantID: tenantA}}
 		for i := 0; i < 1001; i++ {
 			plan.References = append(
 				plan.References,
 				versionapp.PlannedReference{
-					Reference: storagehandoff.Reference{
+					Reference: storage.Reference{
 						ReferenceID: fmt.Sprintf("ref-%d", i),
 						FileID:      "file-one",
 					},
@@ -528,7 +513,7 @@ func TestReferencePlanPartialBatchCompensation(t *testing.T) {
 		if err = database.Create(&decision).Error; err != nil {
 			t.Fatal(err)
 		}
-		if _, err = plan.Bind(t.Context(), handoff); err == nil {
+		if _, err = plan.Bind(t.Context(), references); err == nil {
 			t.Fatal("second batch should fail")
 		}
 		if p.bindCalls.Load() != 2 {
@@ -563,7 +548,7 @@ func TestReferencePlanPartialBatchCompensation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		worker.WithHandoff(handoff)
+		worker.WithReferences(references)
 		task, err := worker.Claim(t.Context())
 		if err != nil || task == nil {
 			t.Fatalf("claim %v", err)
@@ -587,19 +572,19 @@ func TestReferencePlanPartialBatchCompensation(t *testing.T) {
 	})
 }
 
-func TestReferencePublicationMalformedRejection(t *testing.T) {
+func TestReferencePublicationUnknownBindOutcome(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		p := &publicationStorage{
-			expiry:        time.Now().UTC().Add(time.Hour),
-			refs:          map[string]string{},
-			malformedBind: true,
+			expiry:      time.Now().UTC().Add(time.Hour),
+			refs:        map[string]string{},
+			unknownBind: true,
 		}
 		client, _, _ := publicationHTTP(t, database, p)
 		ctx := identity(t, "tenant")
-		a := create(t, client, ctx, "malformed-bind", "model")
+		a := create(t, client, ctx, "unknown-bind", "model")
 		req := &api.CreateVersionRequest{
 			ArtifactPath: api.ArtifactPath{ArtifactID: a.ID},
-			RequestKey:   "malformed",
+			RequestKey:   "unknown",
 			Files:        []api.FileReference{{FileID: "file-one", Path: "f"}},
 		}
 		_, err := client.CreateVersion(ctx, req)

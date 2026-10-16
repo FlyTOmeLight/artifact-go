@@ -3,7 +3,6 @@ package integration_test
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -14,12 +13,11 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	versionapp "github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 )
 
@@ -48,7 +46,7 @@ func backupDBName(t *testing.T, cfg db.Config) string {
 		}
 		name = strings.TrimPrefix(u.Path, "/")
 	}
-	if !regexp.MustCompile(`^handoff_[a-f0-9]{12}$`).MatchString(name) {
+	if !regexp.MustCompile(`^references_[a-f0-9]{12}$`).MatchString(name) {
 		t.Fatal("backup fixture refused non-disposable database")
 	}
 	return name
@@ -102,22 +100,9 @@ func restoreDatabase(t *testing.T, container string, cfg db.Config, dump []byte)
 	)
 }
 
-func backupBindingHandler(t *testing.T, database *db.DB) http.Handler {
+func backupBindingHandler(t *testing.T, database *db.DB) storage.ReferenceService {
 	t.Helper()
-	handler, err := storagehandoff.NewHandler(
-		storage.NewBindingService(database),
-		[]storagehandoff.Consumer{
-			{
-				ID:     "artifact",
-				Tokens: []string{"fixture-internal"},
-				Scopes: []storagehandoff.Scope{{TenantID: tenantA}},
-			},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return handler
+	return storage.NewBindingService(database, "artifact")
 }
 
 func TestPairedDatabaseBackupRestore(t *testing.T) {
@@ -139,7 +124,7 @@ func TestPairedDatabaseBackupRestore(t *testing.T) {
 			if err := st.Migrate(t.Context(), storageDB); err != nil {
 				t.Fatal(err)
 			}
-			client, server, handoff := publicationHTTP(t, artifactDB, backupBindingHandler(t, storageDB))
+			client, server, references := publicationHTTP(t, artifactDB, backupBindingHandler(t, storageDB))
 			ctx := identity(t, "tenant")
 			a := create(t, client, ctx, "backup", "model")
 			ap := api.ArtifactPath{ArtifactID: a.ID}
@@ -172,20 +157,20 @@ func TestPairedDatabaseBackupRestore(t *testing.T) {
 			}
 			// These records model requests interrupted between Bind and the local commit.
 			expiry := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
-			target := storagehandoff.Scope{TenantID: tenantA}
+			target := storage.Scope{TenantID: tenantA}
 			for _, state := range []string{"preparing", "aborted"} {
 				plan := versionapp.ReferencePlan{
 					Scope: target,
 					References: []versionapp.PlannedReference{
 						{
-							Reference: storagehandoff.Reference{
+							Reference: storage.Reference{
 								ReferenceID: state + "-bound",
 								FileID:      fileID,
 							},
 							OriginalExpiresAt: expiry,
 						},
 						{
-							Reference: storagehandoff.Reference{
+							Reference: storage.Reference{
 								ReferenceID: state + "-unsent",
 								FileID:      fileID,
 							},
@@ -193,7 +178,11 @@ func TestPairedDatabaseBackupRestore(t *testing.T) {
 						},
 					},
 				}
-				if _, err := handoff.Bind(t.Context(), target, plan.ReferencePairs()[:1]); err != nil {
+				if _, err := references.Bind(
+					t.Context(),
+					target,
+					plan.ReferencePairs()[:1],
+				); err != nil {
 					t.Fatal(err)
 				}
 				raw, err := json.Marshal(plan)
@@ -274,7 +263,7 @@ func TestPairedDatabaseBackupRestore(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			worker.WithHandoff(restoredHandoff)
+			worker.WithReferences(restoredHandoff)
 			if err = worker.Scan(t.Context()); err != nil {
 				t.Fatal(err)
 			}

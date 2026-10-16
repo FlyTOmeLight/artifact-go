@@ -12,7 +12,7 @@ import (
 	"github.com/FlyTOmeLight/server-go/db"
 	"gorm.io/gorm/clause"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 )
 
 type RecoveryRequest struct {

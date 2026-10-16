@@ -57,7 +57,7 @@ def main():
             wait(["docker", "exec", pg, "pg_isready", "-U", "postgres"])
             pg_port = run("docker", "port", pg, "5432", capture=True).strip().rsplit(":", 1)[1]
             env["ARTIFACT_TEST_PG_DSN"] = f"postgres://postgres:acceptance-only@127.0.0.1:{pg_port}/acceptance?sslmode=disable"
-            run("go", "test", "-race", "-count=1", "-v", "./deploy/acceptance", "-run", "^TestTLSRotation$")
+            run("go", "test", "-race", "-count=1", "-v", "./tests/integration", "-run", "^TestStorageBinding")
             redis_src = start("redis-source", "redis:7.4.2-alpine", "redis-server", "--save", "", "--appendonly", "no")
             redis_dst = start("redis-restored", "redis:7.4.2-alpine", "redis-server", "--save", "", "--appendonly", "no")
             for redis in (redis_src, redis_dst):
@@ -93,7 +93,7 @@ def main():
             env["ARTIFACT_ACCEPTANCE_WRITE"] = "0"
             run("go", "test", "-count=1", "-v", "./deploy/acceptance", "-run", "^TestJuiceFSBytes$")
             print(f"RECOVERY copied objects+fresh Redis+fresh cache+byte verification seconds={time.monotonic() - recovery:.3f}", flush=True)
-            print("PASS: isolated TLS/rotation and frozen JuiceFS metadata+object recovery; 8 MiB, concurrency 4; not production capacity or RPO/RTO", flush=True)
+            print("PASS: in-process references and frozen JuiceFS metadata+object recovery; 8 MiB, concurrency 4; not production capacity or RPO/RTO", flush=True)
     finally:
         for name in reversed(containers):
             subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

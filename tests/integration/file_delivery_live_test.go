@@ -20,11 +20,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	backend "github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	backend "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	artifactapi "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	storageapi "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 	"github.com/FlyTOmeLight/artifact-go/service"
@@ -37,16 +36,20 @@ func liveDeliveryArtifactHTTP(
 	t *testing.T,
 	database *db.DB,
 	resolver service.IdentityResolver,
-	remote string,
+	storageDB *db.DB,
+	config *service.StorageConfig,
 ) *artifactapi.Client {
 	t.Helper()
 	svc, err := service.New(
 		t.Context(),
 		database,
 		service.Options{
-			IdentityResolver: resolver,
-			AutoMigrate:      true,
-			StorageHandoff:   &service.StorageHandoffConfig{Endpoint: remote, Token: "fixture-internal"},
+			IdentityResolver:      resolver,
+			AutoMigrate:           true,
+			StorageConsumerID:     "artifact-delivery",
+			StorageDB:             storageDB,
+			Storage:               config,
+			TenantServiceVerifier: func(*http.Request) error { return nil },
 		},
 	)
 	if err != nil {
@@ -123,29 +126,8 @@ func TestFileDeliveryLive(t *testing.T) {
 				AutoMigrate:           true,
 			},
 		)
-		binding, err := storagehandoff.NewHandler(
-			storage.NewBindingService(storageDB),
-			[]storagehandoff.Consumer{
-				{
-					ID:     "artifact-delivery",
-					Tokens: []string{"fixture-internal"},
-					Scopes: []storagehandoff.Scope{{TenantID: tenant}},
-				},
-			},
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		remote := httptest.NewServer(binding)
-		t.Cleanup(remote.Close)
-		handoff, err := storagehandoff.NewClient(
-			storagehandoff.ClientConfig{Endpoint: remote.URL, Token: "fixture-internal"},
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(handoff.Close)
-		artifacts := liveDeliveryArtifactHTTP(t, artifactDB, resolver, remote.URL)
+		references := storage.NewBindingService(storageDB, "artifact-delivery")
+		artifacts := liveDeliveryArtifactHTTP(t, artifactDB, resolver, storageDB, cfg)
 		adapter, err := backend.New(
 			backend.Config{
 				BackendID:       cfg.BackendID,
@@ -329,7 +311,7 @@ func TestFileDeliveryLive(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		runReferenceTasks(t, artifactDB, handoff)
+		runReferenceTasks(t, artifactDB, references)
 		if _, err := files.CreateGrant(
 			ctx,
 			&storageapi.CreateGrantRequest{
@@ -351,7 +333,7 @@ func TestFileDeliveryLive(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		runReferenceTasks(t, artifactDB, handoff)
+		runReferenceTasks(t, artifactDB, references)
 		if _, err := files.CreateGrant(
 			ctx,
 			&storageapi.CreateGrantRequest{
@@ -469,7 +451,7 @@ func TestFileDeliveryLive(t *testing.T) {
 		}
 		deadline = time.Now().Add(20 * time.Second)
 		for {
-			runReferenceTasks(t, artifactDB, handoff)
+			runReferenceTasks(t, artifactDB, references)
 			var remaining int64
 			if err := artifactDB.Model(&table.Version{}).
 				Where("id IN ? AND state <> ?", []string{version.ID, sharedVersion.ID}, "deleted").

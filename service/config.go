@@ -3,29 +3,30 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/FlyTOmeLight/server-go/db"
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	storageclient "github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
+	storageclient "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 // Config contains only the resources used by the implemented artifact service.
 // Storage is optional; configuring it enables authenticated bucket provisioning.
 type Config struct {
-	DB              db.Config
-	Version         *VersionConfig
-	Worker          *WorkerConfig
-	Storage         *StorageConfig
-	StorageDB       *db.Config
-	StorageFiles    *StorageFileConfig
-	StorageWorker   *StorageWorkerConfig
-	StorageGrants   *StorageGrantConfig
-	StorageInternal *StorageInternalConfig
-	StorageHandoff  *StorageHandoffConfig
+	DB            db.Config
+	Version       *VersionConfig
+	Worker        *WorkerConfig
+	Storage       *StorageConfig
+	StorageDB     *db.Config
+	StorageFiles  *StorageFileConfig
+	StorageWorker *StorageWorkerConfig
+	StorageGrants *StorageGrantConfig
+
+	// StorageConsumerID is the stable owner of persisted file references.
+	StorageConsumerID string
 }
 
 // VersionConfig sets deployment-wide JSON and manifest limits; nil selects the documented defaults.
@@ -54,16 +55,6 @@ func versionConfig(value *VersionConfig) (VersionConfig, error) {
 }
 
 func (c Config) Validate() error {
-	if c.StorageHandoff != nil {
-		client, err := storagehandoff.NewClient(c.StorageHandoff.clientConfig())
-		if err != nil {
-			return err
-		}
-		client.Close()
-	}
-	if c.StorageInternal != nil && c.StorageDB == nil {
-		return errors.New("storage internal listener requires StorageDB")
-	}
 	if c.StorageDB == nil && c.Storage != nil && c.Storage.GrantIssuer != nil {
 		return errors.New("storage grant issuer requires StorageDB")
 	}
@@ -145,10 +136,8 @@ func (c StorageConfig) clientConfig() storageclient.Config {
 }
 
 func (c Config) validateStorage() error {
-	if c.StorageInternal != nil {
-		if _, err := c.StorageInternal.tlsConfig(); err != nil {
-			return err
-		}
+	if strings.TrimSpace(c.StorageConsumerID) == "" || len(c.StorageConsumerID) > 64 {
+		return errors.New("StorageConsumerID must be a nonempty stable identity of at most 64 bytes")
 	}
 	if c.Storage == nil || c.StorageDB == nil {
 		return errors.New("storage backend and database configuration are required")

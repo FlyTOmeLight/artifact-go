@@ -1,5 +1,5 @@
 # Optional Forge entrypoint: bin/artifact-forge-server.
-# Assembly = "artifact-only" # or storage-only / combined with their required resources.
+# StorageConsumerID = "artifact" # Stable persisted reference owner; set with StorageDB.
 AppName = "artifact-go"
 AppCode = 100
 RunMode = "release"
@@ -44,7 +44,7 @@ MaxFailures = 20
 # UsePathStyle = true
 
 # Add StorageDB to enable the storage file module with its own connection pool.
-# Omit DB and use BuildStorageWithVerifiers for a storage-only process.
+# Both database pools belong to the same service.
 # [StorageDB]
 # Driver = "PostgreSQL"
 # DSN = "${env: ARTIFACT_STORAGE_DATABASE_URL}"
@@ -75,30 +75,11 @@ MaxFailures = 20
 # ReadTTL = "1h"
 # AllowedActions = ["s3:PutObject", "s3:GetObject", "s3:ListMultipartUploadParts", "s3:AbortMultipartUpload"]
 
-# T09: artifact -> storage authenticated HTTP/JSON handoff.
-# Use a separate service token; do not reuse the tenant administration identity.
-# [StorageHandoff]
-# Endpoint = "http://127.0.0.1:18081" # loopback development only; otherwise HTTPS
-# Token = "${env:ARTIFACT_STORAGE_CONSUMER_TOKEN}"
-#
-# Storage-only and combined services own this separate internal listener.
-# [StorageInternal]
-# ListenAddress = "127.0.0.1:18081"
-# CertFile = "" # mandatory with KeyFile outside literal loopback
-# KeyFile = ""
-# [[StorageInternal.Consumers]]
-# ID = "artifact" # stable through token rotation and process restarts
-# Tokens = ["${env:ARTIFACT_STORAGE_CONSUMER_TOKEN}"]
-# [[StorageInternal.Consumers.Scopes]]
-# TenantID = "t_000000000000000000000001"
-# ProjectID omitted means exactly the tenant scope, never every project.
-
-# The optional Forge entrypoint verifies each session and exact active member scope.
 # [ForgeTenant]
 # Endpoint = "${env:ARTIFACT_TENANT_ENDPOINT}"
 # ServiceToken = "${env:ARTIFACT_TENANT_SERVICE_TOKEN}"
 # Timeout = "15s"
-# Storage-only / combined also require dedicated bucket-management tokens.
-# Do not reuse ForgeTenant.ServiceToken or StorageHandoff.Token.
+# Bucket provisioning requires a dedicated tenant-management token.
+# Do not reuse ForgeTenant.ServiceToken.
 # [TenantManagement]
 # Tokens = ["${env:ARTIFACT_TENANT_MANAGEMENT_TOKEN}"]

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 func TestStorageObjectExactKeyMultipartCleanup(t *testing.T) {

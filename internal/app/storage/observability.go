@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
 

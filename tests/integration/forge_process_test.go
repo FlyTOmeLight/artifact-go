@@ -54,6 +54,31 @@ func TestForgeProcessStartRequestSignalExit(t *testing.T) {
 				cfg.DB = namespace
 			}
 			cfg.AutoMigrate = true
+			storageCfg := fixture.Config(t, driver)
+			storageDB := fixture.Open(t, driver)
+			var storageNamespace string
+			if err := storageDB.Raw(query).Row().Scan(&storageNamespace); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(storageNamespace, "artifact_test_") || storageNamespace == namespace {
+				t.Fatal("storage process database is not separately isolated")
+			}
+			if driver == db.DriverPostgreSQL {
+				endpoint, err := url.Parse(storageCfg.DSN)
+				if err != nil {
+					t.Fatal(err)
+				}
+				params := endpoint.Query()
+				params.Set("search_path", storageNamespace)
+				endpoint.RawQuery = params.Encode()
+				storageCfg.DSN = endpoint.String()
+			} else {
+				storageCfg.DB = storageNamespace
+			}
+			storageCfg.AutoMigrate = true
+			s3 := httptest.NewServer(&storageFileS3{})
+			defer s3.Close()
+
 			if binary == "" {
 				binary = filepath.Join(binaryDir, "forge-server")
 				build := exec.CommandContext(
@@ -103,13 +128,23 @@ func TestForgeProcessStartRequestSignalExit(t *testing.T) {
 			address := listener.Addr().String()
 			_ = listener.Close()
 			config := map[string]any{
-				"AppName":     "forge-process",
-				"AppCode":     100,
-				"RunMode":     "release",
-				"HTTPServer":  map[string]any{"Listen": address},
-				"DB":          cfg,
-				"Assembly":    "artifact-only",
-				"ForgeTenant": map[string]any{"Endpoint": tenant.URL, "ServiceToken": token},
+				"AppName":           "forge-process",
+				"AppCode":           100,
+				"RunMode":           "release",
+				"HTTPServer":        map[string]any{"Listen": address},
+				"DB":                cfg,
+				"StorageDB":         storageCfg,
+				"StorageConsumerID": "artifact",
+				"Storage": map[string]any{
+					"BackendID":       "test",
+					"Endpoint":        s3.URL,
+					"Region":          "us-east-1",
+					"AccessKeyID":     "test",
+					"SecretAccessKey": "test",
+					"UsePathStyle":    true,
+				},
+				"TenantManagement": map[string]any{"Tokens": []string{strings.Repeat("m", 32)}},
+				"ForgeTenant":      map[string]any{"Endpoint": tenant.URL, "ServiceToken": token},
 			}
 			encoded, err := json.Marshal(config)
 			if err != nil {

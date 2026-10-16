@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm/clause"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
+	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
 

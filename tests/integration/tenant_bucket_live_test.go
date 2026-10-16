@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 func TestTenantBucketLive(t *testing.T) {

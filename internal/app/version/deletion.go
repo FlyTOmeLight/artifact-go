@@ -13,8 +13,8 @@ import (
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/alias"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/retention"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 )
@@ -105,14 +105,14 @@ func markDeleting(tx *db.DB, row *table.Version, automatic bool, now time.Time) 
 			return err
 		}
 		plan := ReferencePlan{
-			Scope:     storagehandoff.Scope{TenantID: artifact.TenantID, ProjectID: artifact.ProjectID},
+			Scope:     storage.Scope{TenantID: artifact.TenantID, ProjectID: artifact.ProjectID},
 			VersionID: row.ID,
 		}
 		for _, file := range files {
 			plan.References = append(
 				plan.References,
 				PlannedReference{
-					Reference: storagehandoff.Reference{
+					Reference: storage.Reference{
 						ReferenceID: file.ReferenceID,
 						FileID:      file.FileID,
 					},

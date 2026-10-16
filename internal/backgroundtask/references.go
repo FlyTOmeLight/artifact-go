@@ -9,12 +9,15 @@ import (
 	"github.com/FlyTOmeLight/server-go/db"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 )
 
-func (w *Worker) WithHandoff(client *storagehandoff.Client) *Worker { w.handoff = client; return w }
+func (w *Worker) WithReferences(client storage.ReferenceService) *Worker {
+	w.references = client
+	return w
+}
 
 // scanReferences only aborts expired work; it never publishes on a client's behalf.
 func (w *Worker) scanReferences(ctx context.Context) error {
@@ -63,8 +66,8 @@ func (w *Worker) scanReferences(ctx context.Context) error {
 }
 
 func (w *Worker) executeRelease(ctx context.Context, task *table.BackgroundTask) error {
-	if w.handoff == nil {
-		return errors.New("storage reference handoff is not configured")
+	if w.references == nil {
+		return errors.New("storage references are not configured")
 	}
 	var plan version.ReferencePlan
 	if err := json.Unmarshal(task.Payload, &plan); err != nil {
@@ -84,10 +87,10 @@ func (w *Worker) executeRelease(ctx context.Context, task *table.BackgroundTask)
 	pairs := plan.ReferencePairs()
 	for start := 0; start < len(pairs); start += 1000 {
 		batch := pairs[start:min(start+1000, len(pairs))]
-		if _, err := w.handoff.Release(ctx, plan.Scope, batch); err != nil {
+		if _, err := w.references.Release(ctx, plan.Scope, batch); err != nil {
 			return err
 		}
-		statuses, err := w.handoff.Statuses(ctx, plan.Scope, batch)
+		statuses, err := w.references.Statuses(ctx, plan.Scope, batch)
 		if err != nil {
 			return err
 		}

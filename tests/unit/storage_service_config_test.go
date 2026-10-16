@@ -1,8 +1,6 @@
 package unit_test
 
 import (
-	"context"
-	"net/http"
 	"testing"
 	"time"
 
@@ -21,9 +19,10 @@ func TestStorageModuleConfiguration(t *testing.T) {
 	}
 	valid := func() service.Config {
 		return service.Config{
-			DB:        db.Config{Driver: db.DriverPostgreSQL},
-			StorageDB: &db.Config{Driver: db.DriverPostgreSQL},
-			Storage:   backend,
+			DB:                db.Config{Driver: db.DriverPostgreSQL},
+			StorageDB:         &db.Config{Driver: db.DriverPostgreSQL},
+			Storage:           backend,
+			StorageConsumerID: "artifact",
 		}
 	}
 	for _, tc := range []struct {
@@ -32,6 +31,7 @@ func TestStorageModuleConfiguration(t *testing.T) {
 		valid  bool
 	}{
 		{name: "defaults", valid: true},
+		{name: "missing-consumer", change: func(c *service.Config) { c.StorageConsumerID = "" }},
 		{name: "missing-backend", change: func(c *service.Config) { c.Storage = nil }},
 		{name: "invalid-storage-driver", change: func(c *service.Config) { c.StorageDB.Driver = "SQLite" }},
 		{name: "invalid-file-limits", change: func(c *service.Config) { c.StorageFiles = &service.StorageFileConfig{MaxFileBytes: 1} }},
@@ -51,18 +51,5 @@ func TestStorageModuleConfiguration(t *testing.T) {
 				t.Fatalf("Validate=%v valid=%t", err, tc.valid)
 			}
 		})
-	}
-	resolver := func(*http.Request) (service.RequestIdentity, error) { return service.RequestIdentity{}, nil }
-	for _, verify := range []service.TenantServiceVerifier{nil, func(*http.Request) error { return nil }} {
-		if err := service.BuildStorageWithVerifiers(
-			resolver,
-			verify,
-		)(
-			context.Background(),
-			nil,
-			nil,
-		); err == nil {
-			t.Fatal("accepted missing config or verifier")
-		}
 	}
 }

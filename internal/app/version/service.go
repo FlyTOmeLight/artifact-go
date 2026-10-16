@@ -18,10 +18,10 @@ import (
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/alias"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/retention"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/cursor"
 	"github.com/FlyTOmeLight/artifact-go/internal/reference"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
@@ -33,10 +33,10 @@ type Limits struct {
 }
 
 type Service struct {
-	database *db.DB
-	limits   Limits
-	handoff  *storagehandoff.Client
-	recheck  func(*http.Request) (scope.Identity, error)
+	database   *db.DB
+	limits     Limits
+	references storage.ReferenceService
+	recheck    func(*http.Request) (scope.Identity, error)
 }
 
 func NewService(database *db.DB, limits Limits) *Service {

@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
@@ -53,9 +53,9 @@ func (c Config) Validate() error {
 }
 
 type Worker struct {
-	database *db.DB
-	config   Config
-	handoff  *storagehandoff.Client
+	database   *db.DB
+	config     Config
+	references storage.ReferenceService
 }
 
 func New(database *db.DB, config *Config) (*Worker, error) {

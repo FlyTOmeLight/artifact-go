@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 )
 

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 )
 
 // StorageFileConfig controls registration limits and the original preparation window.

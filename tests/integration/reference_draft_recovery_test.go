@@ -8,9 +8,9 @@ import (
 
 	"github.com/FlyTOmeLight/server-go/db"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	versionapp "github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
 )
@@ -19,16 +19,16 @@ func TestDraftReferenceRecovery(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		p := &publicationStorage{expiry: time.Now().Add(-time.Hour), refs: map[string]string{}}
 		p.deleted.Store(true)
-		client, _, handoff := publicationHTTP(t, database, p)
+		client, _, references := publicationHTTP(t, database, p)
 		a := create(t, client, identity(t, "tenant"), "draft-recovery", "model")
 		for _, kind := range []string{"create_draft", "update_draft"} {
 			for _, hasFiles := range []bool{false, true} {
 				key := fmt.Sprintf("%s-%t", kind, hasFiles)
-				plan := versionapp.ReferencePlan{Scope: storagehandoff.Scope{TenantID: tenantA}}
+				plan := versionapp.ReferencePlan{Scope: storage.Scope{TenantID: tenantA}}
 				if hasFiles {
 					plan.References = []versionapp.PlannedReference{
 						{
-							Reference: storagehandoff.Reference{
+							Reference: storage.Reference{
 								ReferenceID: key,
 								FileID:      "file-one",
 							},
@@ -63,7 +63,7 @@ func TestDraftReferenceRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		worker.WithHandoff(handoff)
+		worker.WithReferences(references)
 		if err = worker.Scan(t.Context()); err != nil {
 			t.Fatal(err)
 		}

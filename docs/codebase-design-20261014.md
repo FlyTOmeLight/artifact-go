@@ -1,14 +1,14 @@
 # artifact-go 代码结构设计
 
-初稿日期：2026-10-14；本次文件职责补全：2026-10-15。**当前状态：T01–T11 已实现并通过本地验收，T12 本地及真实 JuiceFS 验收通过；真实身份与生产接入尚未验收。下文保留分阶段设计与历史实施记录，当前结果以 [T12 验收](t12-acceptance-20261015.md)和[当前源码](../service/service.go)为准。**
+初稿日期：2026-10-14；当前架构更新：2026-10-17。artifact 与 storage 统一在一个服务进程内装配，文件引用采用 `internal/app/storage.ReferenceService` 进程内调用，两个数据库和各自事务保持独立。内部引用 HTTP、token、独立监听和 Assembly 模式已移除。真实 Forge 登录已有本机验收；生产验收仍待目标环境确定。下文保留历史切片记录，其中拆服务与 HTTP 交接记录不再描述当前部署。实际装配与导出符号以[当前源码](../service/service.go)为准。
 
-依据[技术设计](version-service-technical-design-20261013.md)、[领域术语](../CONTEXT.md)和当前[server-go 项目布局](/Users/light/Code/server-go/docs/go-project-layout.md)。业务语义沿用技术设计，代码职责根据当前需求重新划分。当前已实现六个 artifact app、独立 storage、引用交接、后台恢复、Go SDK 和 27 项公开操作。完整状态与分项证据见[实施计划](implementation-plan-20261015.md#当前实施状态)。下文目录和签名包含设计示意，实际装配与导出符号以当前源码为准。
+依据[技术设计](version-service-technical-design-20261013.md)、[领域术语](../CONTEXT.md)和当前[server-go 项目布局](/Users/light/Code/server-go/docs/go-project-layout.md)。业务语义沿用技术设计，代码职责根据当前需求重新划分。当前已实现六个 artifact app、storage app、进程内文件引用、后台恢复、Go SDK 和 27 项公开操作。完整状态与分项证据见[实施计划](implementation-plan-20261015.md#当前实施状态)。下文目录和签名包含设计示意，实际装配与导出符号以当前源码为准。
 
-## 六个 artifact app，与独立职责的 storage 模块
+## 六个 artifact app 与 storage app
 
-artifact、version、draft、alias、retention、resolve 六个 app 管集合与版本语义，内部 backgroundtask 执行保留和版本删除交接。`internal/storage` 独立拥有文件准备、授权、确认、绑定、物理回收及租户 bucket 创建；首期即采用独立事务的引用交接协议：先持久 Bind，再提交 artifact 业务及释放待办，最后后台 Release。同进程部署也不跨域传 tx，拆服务保持协议不变。
+artifact、version、draft、alias、retention、resolve 六个 app 管集合与版本语义，内部 backgroundtask 执行保留和版本删除交接。`internal/app/storage` 拥有文件准备、授权、确认、绑定、物理回收及租户 bucket 创建；两库分别提交引用事务：先持久 Bind，再提交 artifact 业务及释放待办，最后后台 Release。模块之间不传 tx；同一进程中仍先提交 storage 引用，再提交 artifact 业务结果。
 
-artifact 拥有十一张表，storage 拥有三张表，各自一个 table 包。DraftFile与VersionFile记录草稿和版本的逻辑清单，StorageFile记录实际位置和文件生命周期，StorageReference以(ConsumerID,ReferenceID)记录一次持有关系，DraftFile/VersionFile另存内部ReferenceID；两个领域之间不建立数据库外键，也不允许 artifact 直接查询 storage 表。ReferenceChange持久记录准备计划和提交决策；storage先独立BindReferences，版本、清单、成功回执及旧引用释放任务再在artifact本地事务提交。artifact 共21个HTTP操作，storage文件4个、统一grant 1个、租户bucket管理1个，合计27个。统一grant完整归storage模块，公开契约归storagev1。
+artifact 拥有十一张表，storage 拥有三张表，分别使用 `internal/table` 和 `internal/table/storage`。DraftFile与VersionFile记录草稿和版本的逻辑清单，StorageFile记录实际位置和文件生命周期，StorageReference以(ConsumerID,ReferenceID)记录一次持有关系，DraftFile/VersionFile另存内部ReferenceID；两个领域之间不建立数据库外键，也不允许 artifact 直接查询 storage 表。ReferenceChange持久记录准备计划和提交决策；storage先独立BindReferences，版本、清单、成功回执及旧引用释放任务再在artifact本地事务提交。artifact 共21个HTTP操作，storage文件4个、统一grant 1个、租户bucket管理1个，合计27个。统一grant完整归storage模块，公开契约归storagev1。
 
 Module 的 Interface 包括类型、约束、调用顺序、错误和资源责任；Implementation 隐藏执行细节；Seam 是可替换行为的位置，Adapter 提供具体实现。Depth 来自调用方无需重复维护的行为，Locality 来自每项业务规则有明确归属，不由包数量决定。
 
@@ -29,9 +29,11 @@ Module 的 Interface 包括类型、约束、调用顺序、错误和资源责�
 
 不为每张表建立 app，也不为每个 app 声明同名 Service interface。具体对象负责业务行为；跨域只暴露实际需要的独立提交的引用交接契约，授权由storage自行完成。
 
-## 本轮最终grill结论
+## 历史设计决定（2026-10-14）
 
-已确认的七项决定：租户系统触发bucket创建，artifact-go临时承载；内部HTTP与独立storagev1 SDK；TenantID固定规则定位、无映射表；接入层验证租户系统服务身份；确认仅核对对象存在及实际大小；declaredChecksum可选且未经服务验证；发布指纹保留数字写法差异。这七项决定已实施，对应验收见 T06–T12 记录。
+以下记录保留当时决定；内部引用 HTTP 已由进程内调用替代，当前登录和对象存储验收见[最新记录](inprocess-storage-20261016.md)。
+
+当时确认的七项决定：租户系统触发bucket创建，artifact-go临时承载；内部HTTP与独立storagev1 SDK；TenantID固定规则定位、无映射表；接入层验证租户系统服务身份；确认仅核对对象存在及实际大小；declaredChecksum可选且未经服务验证；发布指纹保留数字写法差异。这七项决定已实施，对应验收见 T06–T12 记录。
 
 剩余的是接入和能力验证：真实身份解析/租户系统验证器、普通IAM STS与过期/跨桶、JuiceFS对象删除和遗留分片回收。旧严格摘要探针只保留历史事实，后续实施时按新契约更新；不据此假称当前后端已通过验收。具体后端、HTTP路径与规则如下，不再预留配置映射或额外业务表。
 
@@ -41,10 +43,10 @@ Module 的 Interface 包括类型、约束、调用顺序、错误和资源责�
 
 需要 review 的主要选择：
 
-1. 保留六个artifact业务app和独立storage模块，统一grant归storage；保留两个内部执行器及分属两域的十四张表；复杂操作按行为拆文件，较小的操作仍放 `service.go`。
+1. 保留六个 artifact 业务 app 和 storage app，统一grant归storage；保留两个内部执行器及分属两域的十四张表；复杂操作按行为拆文件，较小的操作仍放 `service.go`。
 2. 部署配置统一放公开 `service/config.go`，删除此前拟设的重复 `internal/config`；组合应用只需要公开类型。
 3. 身份接入的公开契约放 `service/identity.go`，具体鉴权实现由接入方提供；内部作用域检查留 `internal/scope`。
-4. 文件位置与TenantID派生bucket规则归 `internal/storage/client/location.go`；第一版使用一个配置的 BackendID 与多个租户 bucket，不建立多后端插件或动态注册表。
+4. 文件位置与TenantID派生bucket规则归 `internal/client/storage/location.go`；第一版使用一个配置的 BackendID 与多个租户 bucket，不建立多后端插件或动态注册表。
 5. URI 编解码与游标分别有小型纯实现，因为实际被多个 app 共用；不建立通用工具包或逐层转发接口。
 
 
@@ -98,34 +100,38 @@ artifact-go/
             resolve/
                 controller.go
                 service.go
-        storagehandoff/
-            client.go
-            protocol.go
-            handler.go
-        storage/
-            controller.go
-            service.go
-            bucket.go
-            grant.go
-            complete.go
-            binding.go
-            worker.go
-            table/
-                file.go
-                reference.go
-                task.go
-                schema.go
-            client/
-                types.go
-                location.go
-                s3.go
+            storage/
+                controller.go
+                file_controller.go
+                grant_controller.go
+                service.go
+                bucket.go
                 grant.go
+                complete.go
+                binding.go
+                references.go
+                worker.go
+                task.go
+                recovery.go
+                observability.go
+        client/storage/
+            client.go
+            location.go
+            bucket.go
+            object.go
+            grant.go
         backgroundtask/
             worker.go
             scan.go
             reclamation.go
             references.go
         table/
+            storage/
+                file.go
+                storage_reference.go
+                task.go
+                schema.go
+                clock.go
             artifact.go
             version.go
             draft.go
@@ -245,9 +251,9 @@ artifact-go/
 | `.github/workflows/check.yml` | 调用同一检查入口，运行双库必要用例、构建与生成文档一致性检查 | 本次不设计自动发布或生产部署流程 |
 | `cmd/server/server.go` | 进程信号、app.Run、配置路径和退出码 | 不装业务路由、不自行关闭借用 DB、不编排分片 |
 | `service/config.go` | 公开Config和ArtifactDatabase/StorageDatabase/Storage/Version/Worker配置子结构；必需字段、数值关系及启动前校验 | 不重复读取配置、不将内部 app 类型放进公开字段 |
-| `service/identity.go` | 公开用户身份解析及可信RequestIdentity；另声明服务交接身份验证依赖，认证ConsumerID及可服务scope，接入结果转换为内部输入 | 不实现 JWT、租户成员或角色权限，不相信裸 Header |
-| `service/build.go` | 按artifact-only、storage-only或combined装配实际启用的模块与资源，显式传入各自AutoMigrate开关、身份依赖并交付Runtime；artifact-only不创建storageDB，storage-only不创建artifactDB | 组合应用不重复调用 Build；无真实初始化/关闭行为的 S3 实例不包装成框架 Module |
-| `service/service.go` | 在现有文件内提供两模块各自构造及combined组合装配：artifact仅接收artifactDB与可信storage交接客户端；storage仅接收storageDB、S3及consumer身份验证；combined才传两域DB并装配本地交接。各自安装路由、worker与Start/Stop | 不承接发布业务；借用 DB 不由本 Service 关闭 |
+| `service/identity.go` | 公开用户身份解析及可信RequestIdentity；另声明租户 bucket 管理身份验证依赖；用户接入结果转换为内部可信 scope | 不实现 JWT、租户成员或角色权限，不相信裸 Header |
+| `service/build.go` | 统一装配服务，分别初始化两域数据库，显式传入 AutoMigrate 开关和身份依赖并交付 Runtime | 组合应用不重复调用 Build；无真实初始化/关闭行为的 S3 实例不包装成框架 Module |
+| `service/service.go` | 构造单个服务，注入两域 DB；启用文件模块时用固定 StorageConsumerID 创建 BindingService，并将进程内引用接口注入业务模块；统一安装路由及管理 worker 生命周期 | 不承接发布业务；借用 DB 不由本 Service 关闭 |
 | `conf/server/config.toml` | 一份可运行的结构化示例，字段与 Config 相符，声明DB、存储连接根、限制和 worker 预算 | 不保存真实密钥、不启用生产假身份 |
 | `scripts/check.py` | 拥有本次检查创建的隔离双库 fixture，调用格式、构建、测试、真实 HTTP/多进程检查，失败也清理 | 不控制用户现有业务数据库或长期 JuiceFS 环境 |
 | `scripts/generate-openapi.sh` | 固定生成器版本、Controller/SDK 扫描路径和 `docs/openapi.{json,yaml}` 输出，校验生成退出状态 | 登记/确认请求及200响应生成array/items schema，非200保留错误对象；不手改接口字段、不产生第二份契约来源 |
@@ -257,7 +263,7 @@ artifact-go/
 
 公开 Config 不引用 `internal/*` 类型；内部 app 只在其 `service.go` 中声明自己确实需要的配置子集，由公开 service 显式传值。此前的 `internal/config/config.go` 不再建立，避免公开字段泄漏内部类型或维护同一配置的两份定义。
 
-Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、服务凭证引用、文件准备TTL、上传/读授权期限、必填正数MaxFileBytes及storage worker预算；bucket命名规则固定在location.go。Version 配置包括MaxPayloadBytes（默认256 KiB）、MaxAnnotationsBytes（默认64 KiB）与MaxFilesPerVersion，草稿和版本共用；HTTP配置包括MaxRequestBodyBytes（默认8 MiB），覆盖全部JSON入口；Version配置另含正数引用准备执行期限，各副本一致；该期限用于中止未提交attempt，不是storage引用TTL。Worker配置包括artifact后台并发、扫描周期、LeaseDuration、RenewInterval、退出预算。公开ArtifactDatabase/StorageDatabase分别配置连接与连接池，均复用框架驱动配置；按启用模块只要求自己的DB配置，combined才要求两域配置。artifact-only另提供可信storage交接客户端连接/身份配置；两域分别显式控制AutoMigrate，不强制共库。配置校验检查正值、租约续期关系、支持的后端及命名规则有效性，不把配置值当作存储容量预留。
+Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、服务凭证引用、文件准备TTL、上传/读授权期限、必填正数MaxFileBytes及storage worker预算；bucket命名规则固定在location.go。Version 配置包括MaxPayloadBytes（默认256 KiB）、MaxAnnotationsBytes（默认64 KiB）与MaxFilesPerVersion，草稿和版本共用；HTTP配置包括MaxRequestBodyBytes（默认8 MiB），覆盖全部JSON入口；Version配置另含正数引用准备执行期限，各副本一致；该期限用于中止未提交attempt，不是storage引用TTL。Worker配置包括artifact后台并发、扫描周期、LeaseDuration、RenewInterval、退出预算。公开ArtifactDatabase/StorageDatabase分别配置连接与连接池，均复用框架驱动配置；完整文件服务配置两域数据库；两域分别显式控制 AutoMigrate，不强制共库。StorageConsumerID 在启用 StorageDB 时必填，无默认值，非空且至多 64 字节；升级保留旧值。配置校验检查正值、租约续期关系、支持的后端及命名规则有效性，不把配置值当作存储容量预留。
 
 ## 每个业务文件的职责
 
@@ -278,16 +284,14 @@ Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、�
 | `app/alias/mutation.go` | 供直接操作、发布及自动淘汰共用的锁内变更：名称及 latest 禁写、Revision 检查、墓碑重建、修订递增；绑定时核对目标版本属于同一 Artifact 且 ready；发布前检查条件修订，发布写入版本后执行绑定；自动解除引用只处理指定集合和淘汰目标的当前引用；使用调用方同一 tx，不自建事务、不读取 HTTP 身份、不决定版本能否淘汰 |
 | `app/retention/service.go` | UpdateRetention/PreviewRetention：字段存在语义、规则约束、Revision、作用域；预览构造Plan输入且不写库；更新策略安排后续评估，不自己运行扫描 |
 | `app/retention/planner.go` | 无 I/O 的 PlanInput/PlanResult 与候选计算：Protected、alias、最低保留、数量/年龄、排序及 reject/deleteOldest；预览、发布和 backgroundtask 共用 |
-| `storage/controller.go` | 文件四个用户路由与POST /v1/storage/grants统一授权路由经IdentityResolver；登记/确认直接绑定并输出数组，区分整请求错误与逐项结果；bucket管理路由单独经TenantServiceVerifier；绑定/释放只接受可信内部调用；controller不拥有事务 |
-| `storage/service.go` | 构造及RegisterFiles/GetFile/DeleteFile：可信精确scope、声明字段、登记requestKey幂等、固定位置、文件状态与TTL；新登记要求active，成功登记重试可在可信历史scope确认原记录，不延长期限；登记不接收逻辑路径；只允许显式删除未绑定文件；绑定后只允许可信Release |
-| `storage/bucket.go` | CreateTenantBucket：固定名称、后端存在/创建和同租户重试确认；普通文件登记不自动建桶 |
-| `storage/grant.go` | CreateGrant：展开preset或校验原生S3 actions，拥有短事务并按FileID升序锁全部StorageFile；检查可信精确scope、动作所需状态与期限，含上传动作时持久化全部LastGrantExpiresAt；提交后调用Adapter.CreateGrant签发整批一份STS，上传动作签发后重查全部归属有效性、状态和期限再返回。准备与签发是本模块私有步骤，不公开跨模块拆分接口，不读取artifact表、不存密钥、不立即撤销旧凭证 |
-| `storage/complete.go` | CompleteFiles：逐项事务外Stat，短事务重新锁文件并核对scope、uploading、期限；仅核对存在与大小，成功ready；失败保留uploading可重试，ready或bound重复确认返回已确认记录，不改变引用，不删对象 |
-| `storage/binding.go` | BindReferences/ReleaseReferences/GetReferenceStatuses：自持storage事务，校验服务身份ConsumerID与精确scope，按FileID升序锁；一次ReferenceID生命周期、先Release墓碑拒绝迟到Bind、稳定释放结果及最后引用deleting+StorageTask；不接收调用方tx或查询artifact表 |
-| `storagehandoff/handler.go` | 内部HTTP查询/Bind/Release/状态传输、服务身份及精确scope验证；依赖BindingService接口而不访问数据表，不进入用户SDK |
-| `internal/storagehandoff/client.go` | artifact使用的HTTP/JSON交接客户端；限定超时与重放、转换结果未知错误，不访问两域数据库或S3 |
-| `internal/storagehandoff/protocol.go` | 内部请求/响应与稳定错误契约，仅传scope、FileID、ReferenceID及确认元数据，不携带业务owner |
-| `storage/worker.go` | storage自己的过期扫描、任务领取续租及物理Delete：停止新授权后等待LastGrantExpiresAt，事务外删对象，锁内核对租约后deleted；受控周期复查deleted墓碑处理迟到写入，不复活文件 |
+| `app/storage/controller.go` | 文件四个用户路由与POST /v1/storage/grants统一授权路由经IdentityResolver；登记/确认直接绑定并输出数组，区分整请求错误与逐项结果；bucket管理路由单独经TenantServiceVerifier；绑定/释放只接受可信内部调用；controller不拥有事务 |
+| `app/storage/service.go` | 构造及RegisterFiles/GetFile/DeleteFile：可信精确scope、声明字段、登记requestKey幂等、固定位置、文件状态与TTL；新登记要求active，成功登记重试可在可信历史scope确认原记录，不延长期限；登记不接收逻辑路径；只允许显式删除未绑定文件；绑定后只允许可信Release |
+| `app/storage/bucket.go` | CreateTenantBucket：固定名称、后端存在/创建和同租户重试确认；普通文件登记不自动建桶 |
+| `app/storage/grant.go` | CreateGrant：展开preset或校验原生S3 actions，拥有短事务并按FileID升序锁全部StorageFile；检查可信精确scope、动作所需状态与期限，含上传动作时持久化全部LastGrantExpiresAt；提交后调用Adapter.CreateGrant签发整批一份STS，上传动作签发后重查全部归属有效性、状态和期限再返回。准备与签发是本模块私有步骤，不公开跨模块拆分接口，不读取artifact表、不存密钥、不立即撤销旧凭证 |
+| `app/storage/complete.go` | CompleteFiles：逐项事务外Stat，短事务重新锁文件并核对scope、uploading、期限；仅核对存在与大小，成功ready；失败保留uploading可重试，ready或bound重复确认返回已确认记录，不改变引用，不删对象 |
+| `app/storage/binding.go` | Metadata/Bind/Release/Statuses：自持 storage 事务，使用构造时固定的 ConsumerID 和已认证 scopeConsumerID与精确scope，按FileID升序锁；一次ReferenceID生命周期、先Release墓碑拒绝迟到Bind、稳定释放结果及最后引用deleting+StorageTask；不接收调用方tx或查询artifact表 |
+| `app/storage/references.go` | 进程内文件元数据查询、绑定、释放及引用状态接口与类型；storage.BindingService 实现，业务模块调用，不含 HTTP 或身份凭据 |
+| `app/storage/worker.go` | storage自己的过期扫描、任务领取续租及物理Delete：停止新授权后等待LastGrantExpiresAt，事务外删对象，锁内核对租约后deleted；受控周期复查deleted墓碑处理迟到写入，不复活文件 |
 | `app/resolve/service.go` | Resolve：解析 URI 后核对 scope/type，定位可见集合/版本/alias/latest/文件并返回引用及元数据；不打开文件流，不修改引用或上传状态 |
 | `backgroundtask/worker.go` | Worker依赖构造及Run入口、领取、按 Kind 分派、有界并发、租约续期、失败重排、取消和退出等待；backgroundtask 的至少一次执行与租约所有权在此；不计算保留规则 |
 | `backgroundtask/scan.go` | 扫描artifact保留评估、未完成删除及到期preparing ReferenceChange；短事务重新判定，调用Plan/MarkDeleting或中止并持久交付补偿；不接管业务提交，不扫描storage表 |
@@ -314,10 +318,10 @@ Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、�
 | `table/reference_change.go` | ReferenceChange / reference_changes | (ArtifactID,ActorID,OperationKind,RequestKey)唯一；固定指纹、scope、当前AttemptID、preparing/committed/aborted、截止时间、新引用计划及原始ExpiresAt、appliedRevision等成功回执；只允许当前attempt的条件提交/中止，不保存大JSON重放副本 |
 | `table/background_task.go` | BackgroundTask / background_tasks | Kind/TargetID唯一记录；引用补偿TargetID为AttemptID，删除交接使用独立ID，保存完整不可变ReferenceID/FileID/scope/notBefore载荷，禁止可复用逻辑请求键覆盖旧任务；SKIP LOCKED 领取、DB 时间、LeaseToken 条件续租/完成/失败/重排 SQL；不判断业务目标是否合法 |
 | `table/schema.go` | 显式列出artifact十一种模型 | 新MVP的AutoMigrate和双库选项；不管理storage模型，无历史升级链 |
-| `storage/table/file.go` | StorageFile / storage_files | 精确scope、物理位置、声明、expiresAt、LastGrantExpiresAt、状态；持有关系归StorageReference；保存RequestKey/RequestHash/CreatedBy/ScopeKey及登记唯一键，按ID批量排序锁和条件状态更新 |
-| `storage/table/reference.go` | StorageReference / storage_references | ConsumerID+ReferenceID唯一，固定FileID与scope，存active/released及ReleaseRequiresDeletion；同StorageFile锁内创建/释放及先Release墓碑，released不可恢复；文件外键限storage域内，首期即使FileID deleted也保留墓碑且无TTL，不能丢失可查询收尾回执 |
-| `storage/table/task.go` | StorageTask / storage_tasks | 文件回收任务、DB时间、SKIP LOCKED、租约token及有界重试；不判断版本保留 |
-| `storage/table/schema.go` | 显式列出storage三种模型 | 自己的建表和索引；支持独立DB连接，启用模块的schema须成功，不建立跨域外键 |
+| `table/storage/file.go` | StorageFile / storage_files | 精确scope、物理位置、声明、expiresAt、LastGrantExpiresAt、状态；持有关系归StorageReference；保存RequestKey/RequestHash/CreatedBy/ScopeKey及登记唯一键，按ID批量排序锁和条件状态更新 |
+| `table/storage/storage_reference.go` | StorageReference / storage_references | ConsumerID+ReferenceID唯一，固定FileID与scope，存active/released及ReleaseRequiresDeletion；同StorageFile锁内创建/释放及先Release墓碑，released不可恢复；文件外键限storage域内，首期即使FileID deleted也保留墓碑且无TTL，不能丢失可查询收尾回执 |
+| `table/storage/task.go` | StorageTask / storage_tasks | 文件回收任务、DB时间、SKIP LOCKED、租约token及有界重试；不判断版本保留 |
+| `table/storage/schema.go` | 显式列出storage三种模型 | 自己的建表和索引；支持独立DB连接，启用模块的schema须成功，不建立跨域外键 |
 
 表常量与持久化字段归 table；table 不导入 SDK。业务把数据库事实转换成 SDK 枚举与响应。真实数据库驱动错误的约束映射放在执行操作的 Service；通用可重试 DB 错误仍由框架负责。
 
@@ -328,10 +332,10 @@ Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、�
 | `scope/scope.go` | 内部可信身份类型、context 读写、精确租户/项目和子资源归属检查、归属 active/deleted 状态检查；Controller middleware 与各 app 共用；ProjectID 空不扩大范围 |
 | `reference/uri.go` | artifact:// 集合、版本、alias、文件 URI 的类型化生成/解析与逐段编码、逻辑路径校验；artifact/version/alias 生成，resolve 解析；不执行 DB 查询，不生成 S3 key |
 | `cursor/cursor.go` | 集合 ID/版本 Sequence/草稿 ID 三类游标的编码解码与作用域、筛选一致性检查；不读 DB、不决定排序、不承诺跨页快照；artifact/version/draft 共用 |
-| `storage/client/types.go` | 内部ObjectInfo（仅Size）、Grant与Adapter 所需私有配置；不暴露第三方类型、不重复 SDK HTTP struct 的 binding 标签 |
-| `storage/client/location.go` | TenantID按固定规则派生bucket的纯定位逻辑、独占FileID的实际ObjectKey生成（files/<fileID>，可带部署固定前缀，不含tenant/project业务层级）、BackendID一致性核对；注册时固定完整位置；后续使用 StorageFile 已保存的 bucket/key，不能重新定位历史文件 |
-| `storage/client/s3.go` | 构造并持有SDK客户端，EnsureBucket存在检查/创建及Stat/Delete、对象存在与实际大小转换、错误链和 context；Delete 不存在即成功；不查询或计算可信摘要，不以ETag声称已验证 |
-| `storage/client/grant.go` | CreateGrant的协议实现：展开后的原生S3 Actions、多个exact-key的普通IAM STS policy、期限和连接参数；策略超限明确拒绝，不扩大资源；不查看业务表 |
+| `client/storage/object.go` | 内部ObjectInfo（仅Size）、Grant与Adapter 所需私有配置；不暴露第三方类型、不重复 SDK HTTP struct 的 binding 标签 |
+| `client/storage/location.go` | TenantID按固定规则派生bucket的纯定位逻辑、独占FileID的实际ObjectKey生成（files/<fileID>，可带部署固定前缀，不含tenant/project业务层级）、BackendID一致性核对；注册时固定完整位置；后续使用 StorageFile 已保存的 bucket/key，不能重新定位历史文件 |
+| `client/storage/client.go`、`client/storage/bucket.go`、`client/storage/object.go` | 构造并持有SDK客户端，EnsureBucket存在检查/创建及Stat/Delete、对象存在与实际大小转换、错误链和 context；Delete 不存在即成功；不查询或计算可信摘要，不以ETag声称已验证 |
+| `client/storage/grant.go` | CreateGrant的协议实现：展开后的原生S3 Actions、多个exact-key的普通IAM STS policy、期限和连接参数；策略超限明确拒绝，不扩大资源；不查看业务表 |
 | `tests/fixture/database.go` | 仅供测试引用的同一批 PG/MySQL 连接与隔离 schema、fixture 清理；可启动隔离子进程的测试取得独立连接；不实现内存数据库替代锁语义 |
 | `tests/fake/storage.go` | 仅供测试引用的受控 Adapter：可安排Stat/授权/删除失败、阻塞与迟到对象，以验证 app 行为；不建立第二个生产 local 后端 |
 
@@ -403,7 +407,7 @@ SDK网络调用结束后使用sdk.Complete(response, err)，response为本次HTT
 | `tests/integration/alias_test.go` | Revision、墓碑重建、latest只读、跨集合及非ready目标拒绝；与发布绑定共享规则的一致性 |
 | `tests/integration/storage_file_test.go` | 登记/查询/确认/删除，登记同键重试/冲突/终态不复活，顶层数组及空/重复/超限整体拒绝、旧包装/null/非法元素拒绝且无副作用、逐项部分成功与重试及等长同序结果；scope、期限、Stat失败及重试、零字节、确认/过期竞争；ready/bound重复确认不改变引用、bound拒绝用户删除 |
 | `tests/integration/storage_binding_test.go` | 同scope、ready未到期或bound要求、同ReferenceID重复Bind、released不复活、同ID异参拒绝、ConsumerID隔离、重复Release及先Release墓碑、不同引用共享、跨scope拒绝、排序锁与GC竞争、单批原子与多批部分成功补偿 |
-| `tests/integration/reference_handoff_test.go` | intent先于Bind、丢响应/乱序/部分批次、commit/abort竞争、旧attempt拒绝提交、权威库不可读保留引用、同键单活动attempt/最多成功一次、不可变任务载荷、原ExpiresAt补偿窗口；独立服务和独立数据库验收 |
+| `tests/integration/reference_handoff_test.go` | intent先于Bind、丢响应/乱序/部分批次、commit/abort竞争、旧attempt拒绝提交、权威库不可读保留引用、同键单活动attempt/最多成功一次、不可变任务载荷、原ExpiresAt补偿窗口；进程内调用与独立数据库验收 |
 | `tests/integration/grant_test.go` | preset/actions互斥及原生Actions白名单、展开排序、整批一份STS与无部分成功、fileIDs和ttlSeconds校验、upload/download及自定义子集、混合读写拒绝、策略超限；ready未过期及bound读取、uploading/终态拒读、同scope跨业务来源及ready/bound混批、跨scope拒绝；全部StorageFile升序锁下与最后Release、ready过期或显式删除竞争，非最后Release不阻止读取；写授权期限预留及签发后整批重查；ready读期限受ExpiresAt约束、bound忽略旧ExpiresAt、混批取ready最早期限，ready转bound不延长已签授权；历史scope与同scope不同UserID可读；读授权不延缓GC、延迟签发不延长期限 |
 | `tests/integration/retention_test.go` | 完整策略替换、null存在语义、Revision、预览无写入与执行重算 |
 | `tests/integration/resolve_test.go` | URI/type/scope、alias/latest与可见性；解析只返回元数据 |
@@ -424,7 +428,7 @@ SDK网络调用结束后使用sdk.Complete(response, err)，response为本次HTT
 - cmd/server/server.go 只处理信号、调用 app.Run(ctx, options, service.Build) 和选择退出码，不重复实现配置监听、日志、HTTPHost 和逆序清理。
 - service/config.go 声明公开的类型化 Config，app.Run 按字段名一次解析；只有配置 key 与字段名不同才使用 mapstructure 标签。配置校验与公开子类型留在 service/config.go，内部 app 只接收必要配置值，不重复定义整份部署配置。
 - service.Build 的形状为 func Build(ctx context.Context, runtime *app.Runtime, cfg *Config) error。它通过 runtime.Initialize 接管符合 server.Module 的 DB 资源；构造无独立生命周期的存储客户端，显式构造业务及公开服务，再由 runtime.AddService 接管。初始化 context 仅用于构造，不用于长期 worker。
-- 独立应用 Build 创建并拥有自己的连接；combined组合应用通过公开构造分别注入两域连接和配置（可同实例，事务独立）；独立模块仅注入自身资源和必要的可信交接客户端，不调用子应用 Build 重复初始化。数据库构造分别显式传入AutoMigrate开关。尚未交给 Runtime 的部分资源由构造方清理，已接管资源由框架释放。
+- 独立应用 Build 创建并拥有两域连接；嵌入应用通过公开构造分别注入两域连接和配置，事务独立，不调用子模块 Build 重复初始化。数据库构造分别显式传入 AutoMigrate 开关。尚未交给 Runtime 的部分资源由构造方清理，已接管资源由框架释放。
 - Controller 与 HTTP 业务 Service 使用 *core.Context；数据库和网络调用提取标准 context。对象请求的静态默认值先通过 defaults.Set 预填，随后 binder.Bind(ctx, &req).All().Error() 合并来源并校验。登记/确认直接绑定数组，先做整批结构/长度/重复检查，再按逐项规则应用默认值和校验字段；不让外层绑定错误替代逐项业务结果。错误由 Controller 调用 serrors.AbortWithError 输出；Service 只返回错误。
 - SDK 契约文件和调用文件分开；请求具备 json/form/uri、binding 和必要 example/default 标签，枚举用具名字符串与常量，响应不带请求校验标签。false、0、null 的存在语义保持明确，完整策略替换不能直接复用响应字段的裸 bool 作为必填校验。
 - 普通 JSON SDK 方法复用框架 sdk.Client 和 sdk.Complete(response, err)，按本次 context 设置身份与取消；文件读写由调用方按授权STS直连存储。410 的版本或草稿身份扩展由本服务 SDK 包装后保留，不丢弃框架错误链。
@@ -576,9 +580,9 @@ Table方法接收标准context和本次tx，已建立事务时不能改用基础
 
 ## storage交接和对象存储边界
 
-storage的可信内部操作为BindReferences、ReleaseReferences、GetReferenceStatuses，均自持事务，只接收认证ConsumerID、ReferenceID/FileID集合与可信精确scope，不接收业务ID、调用方tx或普通用户自报consumer。首期统一采用受认证HTTP/JSON，详见[内部线协议](storage-internal-http-contract-20261015.md)，不加入普通storagev1文件SDK或公开用户路由。准备阶段另查询文件可信确认元数据及原始ExpiresAt，必须先持久保存才能发Bind；查询不代替Bind锁内检查。内部类型不泄漏进公开Config或SDK。
+storage 的 `Metadata`、`Bind`、`Release`、`Statuses` 四个方法通过 `internal/app/storage.ReferenceService` 进程内调用。`storage.NewBindingService(db, consumerID)` 固定持久 ConsumerID，各方法接收可信精确 scope 和文件/引用集合，自持 storage 事务；不接收调用方 tx 或用户自报 consumer。准备阶段查询可信确认元数据及原始 ExpiresAt，先持久保存计划再 Bind；查询不替代 Bind 锁内检查。内部类型不进入公开 SDK。
 
-service/build.go与service/service.go显式支持独立模块装配：artifact-only进程仅持artifactDB和可信storage交接客户端，不接收storageDB或S3；storage-only进程仅持storageDB、S3及consumer身份验证，不接收artifactDB；combined才分别注入两域DB并通过回环HTTP交接，即使同实例也使用独立事务。HTTP认证把服务身份转换为ConsumerID，所有部署形态都验证服务凭证及消费方scope，不能复用普通用户Header认证consumer。VersionFile/DraftFile保存FileID、ReferenceID、逻辑路径与元数据，不保存物理key。
+`service/build.go` 与 `service/service.go` 统一装配两个模块，分别注入 artifact DB 与 StorageDB。`StorageConsumerID` 保留已有引用的归属值（OrbStack 为 `artifact-orbstack`），不因移除内部认证而改变。文件引用不再有 HTTP client/handler、内部端口、服务 token 或 allowlist 配置；用户入口继续认证精确 scope，绑定事务继续核对文件归属。VersionFile/DraftFile 保存 FileID、ReferenceID、逻辑路径与元数据，不保存物理 key。
 
 文件准备统一使用批量接口，单文件传一个元素。POST /v1/storage/files 直接接受 `[{requestKey,size,contentType?,declaredChecksum?}]`；POST /v1/storage/files/complete 直接接受 `["f01","f02"]`。请求不包 files/fileIDs 对象。两者均为1–1000项，空数组、重复requestKey或FileID、超限及无效外层结构整体400；请求入口身份失败401/403。合法登记/确认批量逐项独立执行，HTTP 200直接返回与输入等长且同序的逐项结果数组 `[{...}]`，每项为结果或结构化error；部分成功无需重做成功项。登记仍逐项按requestKey幂等，发布和草稿保存的业务快照仍本地全量原子，storage引用提前独立提交。
 
@@ -614,7 +618,7 @@ S3原生权限的粒度保留：s3:PutObject覆盖普通PUT以及分片创建/�
 
 客户端自行调度单次上传、multipart切分/并发/重试/合并/中止。服务不代理上传或下载流；发布只冻结JSON和数据库清单，外部字节被客户端修改由客户端负责，不新增复制封存、持续摘要核验或防覆盖。确认仅检查存在和实际大小，可选摘要保存为声明，不能以ETag冒充验证。
 
-首期即实施[独立引用交接协议](storage-reference-handoff-design-20261015.md)，至少一组验收使用两个服务进程和两个独立数据库；同库测试不作为拆分边界成立的证据。拆服务保持成功、幂等和恢复条件，另验收身份、传输与部署；不增加业务来源证明、授权回调或分布式事务协调器。
+持久引用计划、绑定与释放回执继续遵循[引用状态机设计](storage-reference-handoff-design-20261015.md)。当前通过进程内接口与两个独立数据库验证成功、幂等、故障恢复和事务边界；该历史设计中的独立服务传输方式已由本文的单服务装配取代。
 
 
 ## 两个内部执行器与生命周期
@@ -628,9 +632,9 @@ artifact backgroundtask运行保留评估、到期preparing中止、可靠引用
 | `version/deletion.go` | 保护及alias规则、Version deleting、artifact本地tx写完整释放任务；最终内容清除 | 否 |
 | `backgroundtask/references.go` | 按不可变任务载荷及notBefore发送ReleaseReferences，重复/乱序可恢复；到期preparing只能在本地事务竞争中止并登记全部计划引用，不替用户提交业务，不读取已删除清单重建任务 | 否 |
 | `backgroundtask/reclamation.go` | 发送释放并通过GetReferenceStatuses查询本次删除引用；FinishDeletion与业务任务done同tx | 否 |
-| `storage/worker.go` | 等待授权到期、事务外Delete、核对租约后文件deleted及存储任务done | 是 |
+| `app/storage/worker.go` | 等待授权到期、事务外Delete、核对租约后文件deleted及存储任务done | 是 |
 
-artifact模块构造六个业务app及自己的worker，storage模块构造文件/授权路由及自己的worker；combined模式在现有service文件内组合两者，不新增泛化装配引擎。独立模式只注册并启动自身模块，combined的Start启动两者；Stop取消并等待已启动worker退出，部分启动失败也停止已启动者。初始化context不用于长期任务。框架先排空HTTP，再停两个后台执行器，最后释放拥有的DB；借用DB由外部所有者关闭。
+artifact 模块构造六个业务 app 及自己的 worker，storage 模块构造文件/授权路由及自己的 worker；统一 Service 在现有文件内组合两者。Start 启动已配置的模块，Stop 取消并等待已启动 worker 退出，部分启动失败也停止已启动者。初始化 context 不用于长期任务。框架先排空 HTTP，再停两个后台执行器，最后释放拥有的 DB；借用 DB 由外部所有者关闭。
 
 
 ## 通过模块 Interface 验证
@@ -690,13 +694,13 @@ storagev1的bucket管理文件职责：storage_client.go定义Client配置/构�
 
 当前租户系统源码已核实：TenantID是`t_`加24个小写十六进制字符，ProjectID是`p_`加24个小写十六进制字符（forge-tenant-api的tenant/project Service调用identity.ID）。storage的租户bucket准备按此接入契约验证原始TenantID，不以slug、显示名或大小写转换代替身份；不同bucket命名契约需显式对接。artifact的通用身份边界采用上文TenantID字符集及opaque UserID/ProjectID规则；当前forge-tenant-api生成的ID是这些合法标识的子集，不将bucket命名约束扩大到无文件集合。
 
-固定命名v1：TenantID `t_<24hex>` → Bucket `tenant-t-<24hex>`。不使用摘要、不截断、不随机分配、不维护映射表；在该合法ID集合中名称不重复，符合所选S3命名字符/长度规则。规则常量集中在storage/client/location.go，URI继续保存原TenantID，S3 ObjectKey生成与URI编码分开。名称前缀不作为可热改配置项；历史文件按实际Bucket/ObjectKey读取和回收。
+固定命名v1：TenantID `t_<24hex>` → Bucket `tenant-t-<24hex>`。不使用摘要、不截断、不随机分配、不维护映射表；在该合法ID集合中名称不重复，符合所选S3命名字符/长度规则。规则常量集中在client/storage/location.go，URI继续保存原TenantID，S3 ObjectKey生成与URI编码分开。名称前缀不作为可热改配置项；历史文件按实际Bucket/ObjectKey读取和回收。
 
 管理入口：POST /v1/storage/tenant-buckets，请求体只包含tenantID。这是租户系统的内部管理路由，必须先通过TenantServiceVerifier，不要求普通用户身份，也不接受任意bucket/backend/path或自动创建租户。service/service.go分别安装业务身份解析与管理服务身份验证，不能在整个/v1父组无差别套普通用户Middleware。
 
 storagev1.CreateTenantBucket返回TenantBucketResponse：TenantID、BackendID、Bucket，不返回管理员密钥。新建返回201，同租户重复/并发创建确认既有空间可访问后返回200和相同位置；不需要独立requestKey或数据库创建记录。底层EnsureBucket负责存在检查与CreateBucket；已存在但不可访问、属于其他存储账号或创建冲突未能确认归属时返回明确失败，不能因名称固定就把所有409当成功。JuiceFS实际兼容性在实施时验证。
 
-无删除租户bucket接口：租户/项目删除不级联物料，版本保留和对象回收仍按原规则执行；不能通过bucket级删除绕过Protected或破坏其他项目文件。storage模块、storagev1 SDK与管理依赖有独立职责；未来拆服务沿用独立绑定/释放协议，仍须验收服务身份、网络和部署。不为尚未开始的迁移增设转发层。
+无删除租户bucket接口：租户/项目删除不级联物料，版本保留和对象回收仍按原规则执行；不能通过bucket级删除绕过Protected或破坏其他项目文件。storage模块、storagev1 SDK与管理依赖有独立职责；文件引用使用进程内绑定/释放接口，独立数据库事务及持久回执保持不变。
 
 ## 发布指纹的最终规则
 
@@ -726,9 +730,11 @@ service/identity.go的管理验证类型为TenantServiceVerifier func(*http.Requ
 
 普通IAM/STS多key、权限隔离及到期拒绝已有T00实测证据，探针已更新；当前自动回收、浏览器 CORS 与 failed 任务受控重排已验收；真实身份接入和完整浏览器上传编排仍待验收。它们在对应实施/交付切片验收；第一版不因为尚未做运维工具就新增公开task管理接口，也不把周期扫描当作无限重试。
 
-引用交接故障注入使用tests/fake/reference_handoff.go包裹真实交接实现，仅控制响应丢失、阻塞及乱序，不替代真实数据库状态机；两域独立数据库/进程验收归reference_handoff_test.go。当前目录树是待实施职责，不是已实现证据。
+引用交接故障注入使用tests/fake/reference_handoff.go包裹真实交接实现，仅控制响应丢失、阻塞及乱序，不替代真实数据库状态机；两域独立数据库与进程内调用验收归reference_handoff_test.go。当前目录树是待实施职责，不是已实现证据。
 
-## 已确认的 T00 实施参数
+## 历史 T00 实施参数
+
+以下记录 2026-10-15 的原始部署决定。内部 HTTP、服务 Bearer、传输超时和 TLS 设置已随单服务收敛移除；数据库、引用状态机、worker 与对象存储约束继续适用。
 
 2026-10-15 用户批准 T00 全部建议，并授权原地初始化 Git、仅开始 T01；T02–T12 未启动。参数批准不等于对应业务能力已实现。完整依据见 [T00 review](t00-review-20261015.md)、[配置与受控恢复](t00-configuration-operations-20261015.md)、[内部 HTTP/JSON 契约](storage-internal-http-contract-20261015.md)。
 
@@ -770,7 +776,7 @@ T04已完成保留策略替换/预览、纯JSON版本删除，累计15个业务H
 
 已完成纯JSON多草稿五操作、从ready版本复制及指定草稿修订发布，累计20个业务HTTP操作及对应SDK。草稿保存用ReferenceChange保存requestKey固定指纹、appliedRevision和空引用计划；创建另保留DraftCreateRequest，草稿硬删不删除两类回执。重放返回当前完整草稿和原保存修订，硬删后返回410身份。CAS冲突须先提交aborted空计划；未知COMMIT仅经主库确认本次AttemptID后才能返回确定冲突。GET按Artifact→Draft锁内读取一致快照，摘要列表不包含内容。纯JSON没有外部绑定，直接在本地事务提交最终决定，不虚构文件准备流程。指定修订发布不改草稿，来源编辑/删除不影响成功回执。完整双库、两独立进程CAS、提交结果不明注入、HTTP/SDK、race/vet/build及OpenAPI检查通过。此前T01–T04段落为历史切片，本节为当前实施边界；T06及后续未开始，非空files仍明确拒绝。详见T05交付记录。
 
-T09实现说明：内部服务端传输与client共置于storagehandoff，复用同一线协议并隔离数据库；storage/binding拥有具体事务。service/storage_handoff.go拥有独立监听、TLS、配置映射与退出等待。此布局不改变HTTP边界或引用状态机。T09只接通单文件直接发布，完整草稿/多文件应用仍属T10。
+T09 历史实现说明（传输层已移除）：内部服务端传输与client共置于storagehandoff，复用同一线协议并隔离数据库；storage/binding拥有具体事务。service/storage_handoff.go拥有独立监听、TLS、配置映射与退出等待。此布局不改变HTTP边界或引用状态机。T09只接通单文件直接发布，完整草稿/多文件应用仍属T10。
 
 ## 实现补齐：运行观测边界（2026-10-15）
 

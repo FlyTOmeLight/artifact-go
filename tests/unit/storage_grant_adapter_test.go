@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 func TestStorageGrantAdapter(t *testing.T) {

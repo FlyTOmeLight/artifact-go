@@ -15,10 +15,10 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/cursor"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
@@ -30,10 +30,10 @@ type Limits struct {
 }
 
 type Service struct {
-	database *db.DB
-	limits   Limits
-	handoff  *storagehandoff.Client
-	recheck  func(*http.Request) (scope.Identity, error)
+	database   *db.DB
+	limits     Limits
+	references storage.ReferenceService
+	recheck    func(*http.Request) (scope.Identity, error)
 }
 
 func NewService(database *db.DB, limits Limits) *Service {
@@ -343,12 +343,12 @@ func (s *Service) Delete(c *core.Context, req *api.DeleteDraftRequest) error {
 		if err != nil {
 			return err
 		}
-		plan := version.ReferencePlan{Scope: storagehandoff.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}}
+		plan := version.ReferencePlan{Scope: storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}}
 		for _, f := range files {
 			plan.References = append(
 				plan.References,
 				version.PlannedReference{
-					Reference: storagehandoff.Reference{
+					Reference: storage.Reference{
 						ReferenceID: f.ReferenceID,
 						FileID:      f.FileID,
 					},

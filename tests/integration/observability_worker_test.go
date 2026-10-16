@@ -11,10 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	"github.com/FlyTOmeLight/artifact-go/tests/fixture"
 )
 

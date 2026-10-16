@@ -15,18 +15,18 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 )
 
-func (s *Service) WithHandoff(
-	client *storagehandoff.Client,
+func (s *Service) WithReferences(
+	client storage.ReferenceService,
 	recheck func(*http.Request) (scope.Identity, error),
 ) *Service {
-	s.handoff, s.recheck = client, recheck
+	s.references, s.recheck = client, recheck
 	return s
 }
 
@@ -63,10 +63,10 @@ func revisionConflict() error {
 	return serrors.NewError(409, "RevisionConflict", "draft revision does not match")
 }
 
-func handoffError(err error) error {
-	var e *storagehandoff.Error
-	if errors.As(err, &e) && !e.OutcomeUnknown && e.Status >= 400 && e.Status < 500 {
-		return serrors.NewError(e.Status, e.Code, "storage reference request rejected")
+func referenceError(err error) error {
+	var e *serrors.Error
+	if errors.As(err, &e) && e.Status >= 400 && e.Status < 500 {
+		return err
 	}
 	return serrors.NewError(503, "StorageUnavailable", "storage reference service unavailable")
 }
@@ -302,25 +302,25 @@ func (s *Service) apply(
 	deadline := started.Add(120 * time.Second)
 	attemptCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
-	target := storagehandoff.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}
+	target := storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}
 	ids := []string{}
 	for _, f := range p.files {
 		if f.ReferenceID == "" {
 			ids = append(ids, f.FileID)
 		}
 	}
-	metadata := map[string]storagehandoff.FileMetadata{}
-	if len(ids) > 0 && s.handoff == nil {
+	metadata := map[string]storage.FileMetadata{}
+	if len(ids) > 0 && s.references == nil {
 		return nil, 0, false, serrors.NewError(
 			503,
 			"StorageUnavailable",
-			"storage reference handoff is not configured",
+			"storage references are not configured",
 		)
 	}
 	for start := 0; start < len(ids); start += 1000 {
-		batch, err := s.handoff.Metadata(attemptCtx, target, ids[start:min(start+1000, len(ids))])
+		batch, err := s.references.Metadata(attemptCtx, target, ids[start:min(start+1000, len(ids))])
 		if err != nil {
-			return nil, 0, false, handoffError(err)
+			return nil, 0, false, referenceError(err)
 		}
 		for _, f := range batch {
 			metadata[f.FileID] = f
@@ -386,7 +386,7 @@ func (s *Service) apply(
 			plan.References = append(
 				plan.References,
 				version.PlannedReference{
-					Reference: storagehandoff.Reference{
+					Reference: storage.Reference{
 						ReferenceID: f.ReferenceID,
 						FileID:      f.FileID,
 					},
@@ -456,11 +456,11 @@ func (s *Service) apply(
 	if json.Unmarshal(p.change.Plan, &plan) != nil {
 		return nil, 0, false, unknown()
 	}
-	bound, err := plan.Bind(attemptCtx, s.handoff)
+	bound, err := plan.Bind(attemptCtx, s.references)
 	if err != nil {
-		return nil, 0, false, s.abort(ctx, i, e, p.change, handoffError(err))
+		return nil, 0, false, s.abort(ctx, i, e, p.change, referenceError(err))
 	}
-	confirmed := map[string]storagehandoff.ConfirmationMetadata{}
+	confirmed := map[string]storage.ConfirmationMetadata{}
 	for _, f := range bound {
 		confirmed[f.ReferenceID] = f.File
 	}
@@ -729,12 +729,12 @@ func (s *Service) finish(
 			return err
 		}
 	}
-	release := version.ReferencePlan{Scope: storagehandoff.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}}
+	release := version.ReferencePlan{Scope: storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID}}
 	for _, f := range p.removed {
 		release.References = append(
 			release.References,
 			version.PlannedReference{
-				Reference: storagehandoff.Reference{ReferenceID: f.ReferenceID, FileID: f.FileID},
+				Reference: storage.Reference{ReferenceID: f.ReferenceID, FileID: f.FileID},
 			},
 		)
 	}

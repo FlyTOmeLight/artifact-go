@@ -12,13 +12,13 @@ import (
 	"github.com/FlyTOmeLight/server-go/host"
 	core "github.com/FlyTOmeLight/server-go/pkg"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	storageclient "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	storageclient "github.com/FlyTOmeLight/artifact-go/internal/storage/client"
-	storagetable "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
+	storagetable "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 )
 
-// StorageOptions supplies dependencies for a storage-only service. The database
+// StorageOptions supplies dependencies for the file storage module. The database
 // is borrowed and contains no artifact tables or cross-domain foreign keys.
 type StorageOptions struct {
 	Config                *StorageConfig
@@ -28,7 +28,6 @@ type StorageOptions struct {
 	Files                 *StorageFileConfig
 	Worker                *StorageWorkerConfig
 	Grants                *StorageGrantConfig
-	Internal              *StorageInternalConfig
 }
 
 // StorageService owns storage HTTP handlers and its reclamation worker.
@@ -39,7 +38,6 @@ type StorageService struct {
 	resolver IdentityResolver
 	verifier TenantServiceVerifier
 	worker   *storage.Worker
-	internal *storageInternalServer
 	mu       sync.Mutex
 	cancel   context.CancelFunc
 	done     chan struct{}
@@ -47,7 +45,7 @@ type StorageService struct {
 
 var _ host.Service = (*StorageService)(nil)
 
-// NewStorage constructs storage without an artifact database or service.
+// NewStorage constructs the storage module with its separate database.
 func NewStorage(ctx context.Context, database *db.DB, options StorageOptions) (*StorageService, error) {
 	if database == nil {
 		return nil, errors.New("storage database is required")
@@ -112,10 +110,6 @@ func NewStorage(ctx context.Context, database *db.DB, options StorageOptions) (*
 			},
 		)
 	}
-	internalServer, err := newStorageInternalServer(database, options.Internal)
-	if err != nil {
-		return nil, err
-	}
 	workerCfg := storageWorkerConfig(options.Worker)
 	worker, err := storage.NewWorker(database, backend, &workerCfg)
 	if err != nil {
@@ -133,7 +127,6 @@ func NewStorage(ctx context.Context, database *db.DB, options StorageOptions) (*
 		resolver: options.IdentityResolver,
 		verifier: options.TenantServiceVerifier,
 		worker:   worker,
-		internal: internalServer,
 	}, nil
 }
 
@@ -156,11 +149,6 @@ func (s *StorageService) Start(ctx context.Context) error {
 	if s.cancel != nil {
 		return errors.New("storage service already started")
 	}
-	if s.internal != nil {
-		if err := s.internal.start(ctx); err != nil {
-			return err
-		}
-	}
 	runCtx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	s.done = make(chan struct{})
@@ -179,9 +167,6 @@ func (s *StorageService) Stop(ctx context.Context) error {
 	select {
 	case <-done:
 	case <-ctx.Done():
-	}
-	if s.internal != nil {
-		return errors.Join(ctx.Err(), s.internal.stop(ctx))
 	}
 	return ctx.Err()
 }

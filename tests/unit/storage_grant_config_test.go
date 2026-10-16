@@ -12,8 +12,9 @@ import (
 func TestStorageGrantConfiguration(t *testing.T) {
 	makeConfig := func() service.Config {
 		return service.Config{
-			DB:        db.Config{Driver: db.DriverPostgreSQL},
-			StorageDB: &db.Config{Driver: db.DriverPostgreSQL},
+			DB:                db.Config{Driver: db.DriverPostgreSQL},
+			StorageDB:         &db.Config{Driver: db.DriverPostgreSQL},
+			StorageConsumerID: "artifact",
 			Storage: &service.StorageConfig{
 				BackendID:       "test",
 				Endpoint:        "http://localhost:9000",

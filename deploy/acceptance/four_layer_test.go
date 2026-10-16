@@ -22,10 +22,8 @@ import (
 	"github.com/aws/smithy-go"
 	gormlogger "gorm.io/gorm/logger"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
-	st "github.com/FlyTOmeLight/artifact-go/internal/storage/table"
-	h "github.com/FlyTOmeLight/artifact-go/internal/storagehandoff"
 	at "github.com/FlyTOmeLight/artifact-go/internal/table"
+	st "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	a "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
 	s "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
 	"github.com/FlyTOmeLight/artifact-go/service"
@@ -127,20 +125,22 @@ func TestFourLayerRecovery(t *testing.T) {
 			OwnershipState: service.OwnershipActive,
 		}, nil
 	}
-	filesService, err := service.NewStorage(
+	artifactService, err := service.New(
 		t.Context(),
-		storageDB,
-		service.StorageOptions{
-			Config:                cfg,
-			IdentityResolver:      resolver,
-			TenantServiceVerifier: func(*http.Request) error { return nil },
-			AutoMigrate:           mode == "seed",
-			Files: &service.StorageFileConfig{
+		artifactDB,
+		service.Options{
+			IdentityResolver:   resolver,
+			AutoMigrate:        mode == "seed",
+			StorageConsumerID:  "four-artifact",
+			StorageDB:          storageDB,
+			Storage:            cfg,
+			StorageAutoMigrate: mode == "seed",
+			StorageFiles: &service.StorageFileConfig{
 				MaxFileBytes:        8 << 20,
 				TemporaryFileTTL:    30 * time.Second,
 				MaxRequestBodyBytes: 1 << 20,
 			},
-			Worker: &service.StorageWorkerConfig{
+			StorageWorker: &service.StorageWorkerConfig{
 				Concurrency:   1,
 				ScanInterval:  50 * time.Millisecond,
 				LeaseDuration: 2 * time.Second,
@@ -148,41 +148,7 @@ func TestFourLayerRecovery(t *testing.T) {
 				SweepInterval: time.Second,
 				MaxFailures:   5,
 			},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := s.NewClient(s.ClientConfig{Endpoint: fourHost(t, filesService), Timeout: 10 * time.Second})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = files.Close() })
-	binding, err := h.NewHandler(
-		storage.NewBindingService(storageDB),
-		[]h.Consumer{
-			{
-				ID:     "four-artifact",
-				Tokens: []string{"four-fixture-internal"},
-				Scopes: []h.Scope{{TenantID: "t_0123456789abcdef01234567"}},
-			},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	bindingServer := httptest.NewServer(binding)
-	t.Cleanup(bindingServer.Close)
-	artifactService, err := service.New(
-		t.Context(),
-		artifactDB,
-		service.Options{
-			IdentityResolver: resolver,
-			AutoMigrate:      mode == "seed",
-			StorageHandoff: &service.StorageHandoffConfig{
-				Endpoint: bindingServer.URL,
-				Token:    "four-fixture-internal",
-			},
+			TenantServiceVerifier: func(*http.Request) error { return nil },
 			Worker: &service.WorkerConfig{
 				Concurrency:   1,
 				ScanInterval:  50 * time.Millisecond,
@@ -195,7 +161,13 @@ func TestFourLayerRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifacts, err := a.NewClient(a.ClientConfig{Endpoint: fourHost(t, artifactService), Timeout: 10 * time.Second})
+	endpointURL := fourHost(t, artifactService)
+	files, err := s.NewClient(s.ClientConfig{Endpoint: endpointURL, Timeout: 10 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = files.Close() })
+	artifacts, err := a.NewClient(a.ClientConfig{Endpoint: endpointURL, Timeout: 10 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,16 +357,6 @@ func TestFourLayerRecovery(t *testing.T) {
 	verifyKept()
 	verifyBytes(state.UniqueKey, false)
 	// Both real services now run their production workers against only restored resources.
-	if err = filesService.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := filesService.Stop(shutdown); err != nil {
-			t.Error(err)
-		}
-	})
 	if err = artifactService.Start(ctx); err != nil {
 		t.Fatal(err)
 	}

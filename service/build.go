@@ -73,49 +73,8 @@ func BuildWithVerifiers(
 				StorageFiles:          cfg.StorageFiles,
 				StorageWorker:         cfg.StorageWorker,
 				StorageGrants:         cfg.StorageGrants,
-				StorageInternal:       cfg.StorageInternal,
-				StorageHandoff:        cfg.StorageHandoff,
+				StorageConsumerID:     cfg.StorageConsumerID,
 				TenantServiceVerifier: verify,
-			},
-		)
-		if err != nil {
-			return err
-		}
-		return runtime.AddService(svc)
-	}
-}
-
-// BuildStorageWithVerifiers assembles a storage-only process with its own database.
-func BuildStorageWithVerifiers(
-	resolve IdentityResolver,
-	verify TenantServiceVerifier,
-) func(context.Context, *app.Runtime, *Config) error {
-	return func(ctx context.Context, runtime *app.Runtime, cfg *Config) error {
-		if resolve == nil || verify == nil {
-			return errors.New("storage user and tenant-service verifiers are required")
-		}
-		if cfg == nil {
-			return errors.New("storage configuration is required")
-		}
-		if err := cfg.validateStorage(); err != nil {
-			return err
-		}
-		module := &db.Module{Config: storageDatabaseConfig(*cfg.StorageDB)}
-		if err := runtime.Initialize(ctx, module); err != nil {
-			return err
-		}
-		svc, err := NewStorage(
-			ctx,
-			module.DB,
-			StorageOptions{
-				Config:                cfg.Storage,
-				IdentityResolver:      resolve,
-				TenantServiceVerifier: verify,
-				AutoMigrate:           cfg.StorageDB.AutoMigrate,
-				Files:                 cfg.StorageFiles,
-				Worker:                cfg.StorageWorker,
-				Grants:                cfg.StorageGrants,
-				Internal:              cfg.StorageInternal,
 			},
 		)
 		if err != nil {

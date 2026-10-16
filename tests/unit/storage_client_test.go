@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FlyTOmeLight/artifact-go/internal/storage/client"
+	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
 )
 
 func TestStorageBucketOwnershipPagination(t *testing.T) {

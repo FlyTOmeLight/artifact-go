@@ -1,5 +1,4 @@
-// Package storagehandoff defines the authenticated HTTP boundary between artifact and storage.
-package storagehandoff
+package storage
 
 import (
 	"context"
@@ -46,31 +45,11 @@ type Status struct {
 	ReleaseRequiresDeletion *bool  `json:"releaseRequiresDeletion"`
 }
 
-type MetadataRequest struct {
-	Scope   Scope    `json:"scope"`
-	FileIDs []string `json:"fileIDs"`
+// ReferenceService manages file references in the storage database within this process.
+// The implementation owns a stable consumer ID; callers pass an authenticated scope.
+type ReferenceService interface {
+	Metadata(context.Context, Scope, []string) ([]FileMetadata, error)
+	Bind(context.Context, Scope, []Reference) ([]BindResult, error)
+	Release(context.Context, Scope, []Reference) ([]Status, error)
+	Statuses(context.Context, Scope, []Reference) ([]Status, error)
 }
-
-type ReferencesRequest struct {
-	Scope      Scope       `json:"scope"`
-	References []Reference `json:"references"`
-}
-
-type BindingService interface {
-	Metadata(context.Context, string, Scope, []string) ([]FileMetadata, error)
-	Bind(context.Context, string, Scope, []Reference) ([]BindResult, error)
-	Release(context.Context, string, Scope, []Reference) ([]Status, error)
-	Statuses(context.Context, string, Scope, []Reference) ([]Status, error)
-}
-
-// Error retains a stable remote code and whether an operation may have committed.
-type Error struct {
-	Status         int
-	Code           string
-	OutcomeUnknown bool
-	Cause          error
-}
-
-func (e *Error) Error() string { return e.Code }
-
-func (e *Error) Unwrap() error { return e.Cause }

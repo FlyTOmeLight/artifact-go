@@ -13,8 +13,8 @@ import (
 	"github.com/FlyTOmeLight/server-go/db"
 	"github.com/FlyTOmeLight/server-go/logger"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
-	"github.com/FlyTOmeLight/artifact-go/internal/storage"
 	"github.com/FlyTOmeLight/artifact-go/service"
 )
 
