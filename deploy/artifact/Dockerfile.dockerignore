@@ -5,6 +5,7 @@
 !internal/**
 !sdk/**
 !service/**
+!integration/**
 !conf/**
 !deploy/artifact/Dockerfile
 !deploy/artifact/Dockerfile.dockerignore

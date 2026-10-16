@@ -4,6 +4,7 @@ export CGO_ENABLED := 1
 .PHONY: build test check fmt doc
 build:
 	go build -o bin/artifact-server ./cmd/server
+	go build -o bin/artifact-forge-server ./cmd/forge-server
 	go build -o bin/artifact-maintenance ./cmd/maintenance
 test:
 	go test ./...

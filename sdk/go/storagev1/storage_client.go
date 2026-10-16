@@ -4,6 +4,7 @@ package storagev1
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/FlyTOmeLight/server-go/sdk"
@@ -29,6 +30,11 @@ func NewClient(config ClientConfig) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Credentials belong to one call, including when a server sets cookies or redirects.
+	transport.SetCookieJar(nil)
+	transport.Client.Client().CheckRedirect = func(*http.Request, []*http.Request) error {
+		return errors.New("storage SDK refuses HTTP redirects")
+	}
 	if config.Timeout > 0 {
 		transport.SetTimeout(config.Timeout)
 	}
@@ -42,6 +48,9 @@ func (c *Client) Close() error { return c.transport.Close() }
 // The receiving service verifies the credential; the SDK does not authenticate it.
 type RequestIdentity struct {
 	BearerToken string
+	Session     string
+	CSRFToken   string
+	Origin      string
 	TenantID    string
 	ProjectID   string
 	RequestID   string
@@ -50,6 +59,7 @@ type RequestIdentity struct {
 type identityKey struct{}
 
 // WithRequestIdentity snapshots credentials for one call without changing the client.
+// Session, CSRFToken and Origin carry the original call's browser credentials.
 func WithRequestIdentity(ctx context.Context, identity RequestIdentity) context.Context {
 	return context.WithValue(ctx, identityKey{}, identity)
 }
@@ -57,6 +67,15 @@ func WithRequestIdentity(ctx context.Context, identity RequestIdentity) context.
 func (c *Client) request(ctx context.Context) *resty.Request {
 	req := c.transport.R().SetContext(ctx).SetHeader("Accept", "application/json")
 	if identity, ok := ctx.Value(identityKey{}).(RequestIdentity); ok {
+		if identity.Session != "" {
+			req.SetCookies([]*http.Cookie{{Name: "forge_session", Value: identity.Session}})
+		}
+		if identity.CSRFToken != "" {
+			req.SetHeader("X-CSRF-Token", identity.CSRFToken)
+		}
+		if identity.Origin != "" {
+			req.SetHeader("Origin", identity.Origin)
+		}
 		if identity.BearerToken != "" {
 			req.SetAuthToken(identity.BearerToken)
 		}

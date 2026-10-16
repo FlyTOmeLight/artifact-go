@@ -1,6 +1,6 @@
 # Artifact / storage 交付与运行
 
-本镜像提供当前服务和维护二进制，**不是已接入生产身份系统的可启动业务镜像**。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
+本镜像提供通用服务、可选 Forge 服务和维护三条二进制。Forge 入口已有 session 与 active 租户成员接入，需配置并部署配套的新 tenant scope 接口；本机已有租户部署尚未升级，不表示生产身份接入已验收。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
 
 ## 构建及身份装配
 
@@ -11,7 +11,7 @@ docker build -f deploy/artifact/Dockerfile -t artifact-go:local .
 docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:local -h
 ```
 
-构建固定 Go 1.27.0 官方镜像 digest，与 go.mod 一致，不修改依赖。运行层为非 root 的 scratch，包含 CA、时区、两条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
+构建固定 Go 1.27.0 官方镜像 digest，与 go.mod 一致，不修改依赖。若构建网络无法访问默认 Go 模块代理，可用 `--build-arg GOPROXY=<可访问的公开模块代理>`；它只改变模块获取地址，不改变锁定版本或跳过校验。运行层为非 root 的 scratch，包含 CA、时区、三条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
 
 接入方在自己的入口中把已经验证的身份函数交给以下公开装配函数，随后按相同 Dockerfile 构建入口；本仓库不假定租户系统的 HTTP 鉴权协议。
 
@@ -24,6 +24,29 @@ docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:loc
 `IdentityResolver` 必须验证本次调用身份及精确租户/项目归属，返回可信 UserID、TenantID、可选 ProjectID、归属 active/deleted。历史读取和成功请求确认需要可信历史归属；查不到或拒绝访问不能自行转换成 deleted。`TenantServiceVerifier` 仅验证租户系统的 bucket 管理身份，与普通用户和 artifact→storage 服务凭据分开。
 
 配置字段的完整可运行语法以 [conf/server/config.toml](../../conf/server/config.toml) 为准。artifact-only 保留 DB/Version/Worker/StorageHandoff；storage-only 配置 StorageDB/Storage/StorageFiles/StorageWorker/StorageGrants/StorageInternal，并使用相应专用装配入口；combined 包含两者。`AutoMigrate=false` 为默认值；首期新库首次初始化须由受控启动显式启用，完成后关闭，不把多副本同时启动当作生产迁移方案。MySQL 使用 UTC 与 parseTime；连接池每域独立配置。
+
+## Forge session 入口
+
+`bin/artifact-forge-server` / 镜像内 `/usr/local/bin/artifact-forge-server` 使用 `[ForgeTenant]`，不影响原 `service.Build` 或自定义 resolver。构造时把 HTTP 客户端交给 Runtime；停止 HTTP 与两域 worker 后才关闭数据库和身份传输。
+
+```toml
+Assembly = "artifact-only" # storage-only 或 combined 需配齐各自资源
+
+[ForgeTenant]
+Endpoint = "${env:ARTIFACT_TENANT_ENDPOINT}"
+ServiceToken = "${env:ARTIFACT_TENANT_SERVICE_TOKEN}"
+Timeout = "15s"
+
+# storage-only / combined 额外要求：
+# [TenantManagement]
+# Tokens = ["${env:ARTIFACT_TENANT_MANAGEMENT_TOKEN}"]
+```
+
+其余资源沿现有配置。通过 `SERVER_CONFIG_PATH` 指向私有运行配置，镜像显式选择 Forge entrypoint；默认 entrypoint 仍是缺少注入即拒绝启动的通用服务器。artifact-only 不加载 Storage/StorageDB；storage-only 不打开 artifact DB；combined 仍使用两域独立事务和 HTTP 交接。tenant API、bucket 管理、引用交接凭据不可复用。所有客户端配置固定在构造时，换 token 后需重启。
+
+浏览器使用同源 `/artifact/v1/`、`/storage/v1/` 代理；Forge 前端 chart 的 `artifact.upstream` / `storage.upstream` 默认关闭，配置后只开放这两段公开 v1 路由，原 Cookie/Origin/CSRF 不改写。租户 PublicURL 必须匹配浏览器真实 Origin。程序调用则通过 SDK 的逐请求 Session/CSRFToken/Origin 传递现有 Forge 会话，不能拿服务 Bearer 代替用户。历史 scope 本轮拒绝。
+
+需要先升级配套 tenant 源码（scope 接口及独立 bucket 任务），迁移新表并使用专用管理凭据启用其 worker；既有租户可运行 `server bucket-backfill` 幂等登记。任务失败后排除原因，`server bucket-retry TENANT_ID` 仅重排该 failed 任务。详见 sibling `forge-tenant-api/docs/storage-bucket-provisioning.md` 与[接口方案](../../docs/tenant-integration-design-20261016.md)。本轮均未自动部署。
 
 ## 网络与凭据轮换
 
@@ -78,7 +101,7 @@ artifact-maintenance -domain artifact -db-config /run/secrets/artifact-db.json \
 
 首期建议维护窗口协调快照：停止新业务写入及新授权，等待已发写凭据上界和活动请求结束，停止两域 worker/服务与 JuiceFS 写入后，对上述各层记录同一恢复点。数据库和 JuiceFS 各用其存储设施支持的备份方式；文档不把文件系统在线复制当一致备份。若需要在线 PITR，必须另外设计并演练跨层恢复点。
 
-恢复时先保持入口和 worker 关闭，恢复匹配的一组数据、配置与密钥，核对 backend/bucket、ConsumerID、表行和对象；再启动 JuiceFS、storage、artifact，检查积压和失败任务。不能混用新 artifact 快照与旧 storage 引用墓碑快照，否则可能删除仍被引用的对象；也不能重新生成 ReferenceID 或把 preparing 当成功发布。准备期限/写凭据上界按原时间保留。本地两业务域数据库的成对恢复已通过，见 [T12 恢复记录](../../docs/t12-backup-restore-20261015.md)；本机独立 JuiceFS 元数据与对象的冻结备份恢复已通过，见[隔离部署验收](../../docs/deployment-acceptance-20261015.md)。两业务库与 JuiceFS 四层同一恢复点的联合演练、生产 RPO/RTO 及容量仍待最终环境验收。
+恢复时先保持入口和 worker 关闭，恢复匹配的一组数据、配置与密钥，核对 backend/bucket、ConsumerID、表行和对象；再启动 JuiceFS、storage、artifact，检查积压和失败任务。不能混用新 artifact 快照与旧 storage 引用墓碑快照，否则可能删除仍被引用的对象；也不能重新生成 ReferenceID 或把 preparing 当成功发布。准备期限/写凭据上界按原时间保留。本地两业务域数据库的成对恢复已通过，见 [T12 恢复记录](../../docs/t12-backup-restore-20261015.md)；本机独立 JuiceFS 元数据与对象的冻结备份恢复已通过，见[隔离部署验收](../../docs/deployment-acceptance-20261015.md)。本机两业务库与 JuiceFS 四层同一恢复点的联合恢复也已通过，见[四层恢复记录](../../docs/four-layer-recovery-20261016.md)；生产恢复设施、RPO/RTO 及容量仍待最终环境验收。
 
 ## 尚未具备的生产接入证据
 

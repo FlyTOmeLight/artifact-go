@@ -183,3 +183,8 @@ T00 结论及配置以 [T00 review](t00-review-20261015.md) 和 [确认参数](t
 | T11 | [T11 验收](t11-acceptance-20261015.md) |
 
 T12 的成对数据库恢复、真实维护 CLI、部署镜像与真实 JuiceFS 完整文件链路验收已通过，见 [T12 交付记录](t12-acceptance-20261015.md)。真实租户身份接入仍缺外部协议与环境，不能用受控身份 fixture 替代；最终结果见 [T12 交付矩阵](t12-delivery.md)。
+
+
+## 后续接入，2026-10-16
+
+用户确认有效租户成员准入、项目仅校验归属、active-only 接入。已实现 tenant scope 接口、两个 SDK 的 session 隔离、可选 Forge 入口、独立 bucket 开通任务及同源代理。任务覆盖、实际检查与尚未部署边界见[接入交付记录](tenant-integration-acceptance-20261016.md)，接口和职责见[接入方案](tenant-integration-design-20261016.md)。本节替代上文“尚无身份协议”的当前状态，不改写 T00–T12 当时的验收证据。

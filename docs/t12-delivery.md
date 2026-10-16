@@ -4,6 +4,8 @@
 
 后续补充：[本机隔离部署验收](deployment-acceptance-20261015.md)已验证 TLS/服务凭据轮换与独立 JuiceFS 恢复；[租户能力核实](forge-tenant-capabilities-20261015.md)记录真实身份接入的可复用接口及缺项。
 
+2026-10-16 后续：[Forge 接入交付](tenant-integration-acceptance-20261016.md)，成员准入与 active-only 规则已确认；此处历史矩阵的缺项按新记录逐项更新，不代表生产部署。
+
 运行说明：[deploy/artifact/README.md](../deploy/artifact/README.md)。不新增公共 task API，不将配置 Header 当真实身份。
 
 | Spec 测试项 | 对应测试与证据 | 状态及边界 |

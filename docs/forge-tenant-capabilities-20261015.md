@@ -1,5 +1,7 @@
 # forge-tenant-api 身份接入能力核实
 
+2026-10-16 已实现 scope 接口、成员准入、Forge adapter、bucket 任务及同源代理；本页保留核实时点事实，后续实现与验证见[后续交付记录](tenant-integration-acceptance-20261016.md)。
+
 核对日期：2026-10-15。范围：只读核实 `forge-tenant-api` 当前工作区及本机部署元数据；未修改该仓库，未调用生产写接口，未读取或输出密钥。
 
 结论：当前租户 API 已有用户会话校验、精确租户成员检查、精确项目权限查询及 Go SDK，可以支持 active scope 的接入基础。完整满足 artifact-go `IdentityResolver` 的历史归属授权、面向用户 Bearer 的认证契约，以及租户创建后调用 storage 开通 bucket 的链路尚未具备，不能直接把现有 SDK 插入就宣布身份接入完成。

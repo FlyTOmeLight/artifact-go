@@ -1,6 +1,6 @@
 # artifact-go
 
-物料集合、版本与文件引用服务。**T01–T11 已完成，T12 本地及真实 JuiceFS 验收已通过**；真实租户身份接入和生产部署证据仍未完成，T12 不标记为完整通过。见 [T12 验收记录](docs/t12-acceptance-20261015.md)。
+物料集合、版本与文件引用服务。**T01–T11 已完成，T12 本地及真实 JuiceFS 验收已通过**；已新增可选 Forge session 接入与有效租户成员校验；部署及真实浏览器登录仍需另行验收，T12 不标记为生产完整通过。见 [T12 验收记录](docs/t12-acceptance-20261015.md)。
 
 已实现的操作：
 
@@ -59,20 +59,20 @@ MySQL连接必须使用`parseTime=true&loc=UTC`，保证不同机器读取同一
 
 resolver必须认证本次请求，核对选择的精确租户/项目，并返回`UserID`、`TenantID`、可选`ProjectID`及`OwnershipActive`或`OwnershipDeleted`。租户ID为1–64位ASCII字母、数字、`_`或`-`，保留大小写；与现有租户系统生成的`t_`加24位十六进制ID兼容。SDK里的scope Header只表达选择，不是身份依据。已删除scope需要接入方仍明确授权历史访问；本服务允许读取、归档及现有版本管理，拒绝新建。
 
-当前真实租户接入尚未完成，**`cmd/server`默认Build在缺少resolver时拒绝启动**。不提供把Header当身份的生产模式。接入方使用以下装配位置：
+Forge 用户可使用新增 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。此实现尚未部署到已有租户环境。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
 
 ```go
 // resolver is the deployment's verified service.IdentityResolver.
 err := app.Run(ctx, app.Options{}, service.BuildWithIdentity(resolver))
 ```
 
-完整测试用位于`tests/`的受控Bearer映射启动真实独立进程，并经SDK请求后发送SIGTERM验证退出。该fixture不编译进服务器入口，测试通过不表示真实登录与历史scope接入已交付。
+既有测试保留受控 Bearer 的通用装配验证。新增 Forge 进程测试覆盖启动、请求和 SIGTERM 退出；显式设置 `ARTIFACT_TEST_TENANT_REPO` 后，跨仓库测试调用真实 tenant HTTP/session 校验与独立数据库。测试会话仅在隔离数据库生成，不代表真实 Casdoor 浏览器登录已验收，详见[本轮记录](docs/tenant-integration-acceptance-20261016.md)。
 
 配置样例在`conf/server/config.toml`：`ARTIFACT_DATABASE_URL`供PostgreSQL连接，默认监听`127.0.0.1:18080`；MySQL使用框架Host/Port/User/Password/DB字段。AutoMigrate默认关闭，首次受控建表需显式开启；当前创建`artifacts`、`versions`、`create_requests`、`aliases`、`retention_policies`、`background_tasks`、`drafts`、`draft_files`、`draft_create_requests`、`reference_changes`、`version_files`十一张表及归属外键。不要把凭证提交到Git。
 
 ## Go SDK
 
-SDK位于`sdk/go/artifactv1`，与根服务同一module。逐请求身份放在context，不修改共享客户端Header；有副作用请求默认不自动重试。
+SDK位于`sdk/go/artifactv1`，与根服务同一module。逐请求身份放在context，不修改共享客户端Header；有副作用请求默认不自动重试。逐请求身份也支持 `Session`、`CSRFToken` 和原始 `Origin`，供 Forge session 接入使用；客户端不缓存响应 Cookie，也不自动跟随重定向。服务端身份适配仍需单独装配，传递这些字段本身不代表已完成登录接入。具体契约与已确认范围见[接入方案](docs/tenant-integration-design-20261016.md)。
 
 ```go
 client, err := artifactv1.NewClient(artifactv1.ClientConfig{Endpoint: endpoint})
@@ -213,4 +213,4 @@ artifact 配置 `StorageHandoff`，storage 配置 `StorageInternal`。combined �
 
 ## T12 交付验收
 
-完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；真实身份、生产网络/密钥与四层联合灾备保留为未验收项。本机隔离环境的 TLS/凭据轮换及 JuiceFS 元数据与对象恢复见[部署验收记录](docs/deployment-acceptance-20261015.md)；租户系统可复用能力及缺项见[能力核实](docs/forge-tenant-capabilities-20261015.md)。
+完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。人工 Casdoor 浏览器登录、生产网络/密钥与生产恢复目标保留为待验收；未自动升级既有部署。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。

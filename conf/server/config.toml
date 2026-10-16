@@ -1,3 +1,5 @@
+# Optional Forge entrypoint: bin/artifact-forge-server.
+# Assembly = "artifact-only" # or storage-only / combined with their required resources.
 AppName = "artifact-go"
 AppCode = 100
 RunMode = "release"
@@ -90,3 +92,13 @@ MaxFailures = 20
 # [[StorageInternal.Consumers.Scopes]]
 # TenantID = "t_000000000000000000000001"
 # ProjectID omitted means exactly the tenant scope, never every project.
+
+# The optional Forge entrypoint verifies each session and exact active member scope.
+# [ForgeTenant]
+# Endpoint = "${env:ARTIFACT_TENANT_ENDPOINT}"
+# ServiceToken = "${env:ARTIFACT_TENANT_SERVICE_TOKEN}"
+# Timeout = "15s"
+# Storage-only / combined also require dedicated bucket-management tokens.
+# Do not reuse ForgeTenant.ServiceToken or StorageHandoff.Token.
+# [TenantManagement]
+# Tokens = ["${env:ARTIFACT_TENANT_MANAGEMENT_TOKEN}"]

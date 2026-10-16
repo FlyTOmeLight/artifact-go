@@ -14,3 +14,6 @@
 JuiceFS 部分以 8 个不同的 1 MiB 对象、并发 4 测量本机小样本写读；停止独立源 gateway 后，将 `juicefs dump` 的元数据与全部底层对象目录成对备份，恢复到新的 Redis 和对象卷，再用空缓存 gateway 读取所有对象并核对 SHA-256。保留原卷 UUID 和 `/data` 路径映射，原 gateway 停止后才启动恢复 gateway；不让两个元数据库同时写同一对象目录。
 
 这不是容量上限测试，也没有在同一恢复点联合备份两业务数据库。业务双库恢复证据另见 `../../docs/t12-backup-restore-20261015.md`。生产数据库、对象存储、CA、入口、目标负载及 RPO/RTO 需要部署方提供参数后另行验收。
+
+
+四层联合恢复另运行 `python3 deploy/acceptance/four_layer.py`。它在同一冻结点备份两业务数据库、JuiceFS 元数据与对象，恢复到全新资源后核对原版本和字节，再由真实 worker 继续删除义务。范围与实测结果见 [2026-10-16 记录](../../docs/four-layer-recovery-20261016.md)；不是默认 CI 或容量测试。
