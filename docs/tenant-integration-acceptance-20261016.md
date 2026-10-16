@@ -1,5 +1,7 @@
 # Forge 接入与恢复交付，2026-10-16
 
+后续已完成提交整理、本机部署及真实 Casdoor 浏览器联调，见[部署与登录记录](forge-orbstack-login-20261016.md)。以下保留实现阶段的原始验收边界。
+
 范围：按用户确认的有效租户成员准入、项目仅校验归属、active-only 接入实施。包含 artifact-go、forge-tenant-api 和 forge-tenant-web；没有提交、推送、发布或升级已有部署。保留各仓库任务开始前的未提交改动。
 
 ## 已实现的结果

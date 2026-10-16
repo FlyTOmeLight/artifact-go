@@ -1,0 +1,359 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "artifact-forge-postgres",
+        "namespace": "artifact-storage"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "local-path",
+        "resources": {
+          "requests": {
+            "storage": "5Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "artifact-forge-postgres",
+        "namespace": "artifact-storage"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "artifact-forge-postgres"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "artifact-forge-postgres"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "postgres",
+                "image": "postgres:17-alpine",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "POSTGRES_PASSWORD",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "artifact-forge-postgres",
+                        "key": "POSTGRES_PASSWORD"
+                      }
+                    }
+                  },
+                  {
+                    "name": "PGDATA",
+                    "value": "/var/lib/postgresql/data/pgdata"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 5432
+                  }
+                ],
+                "readinessProbe": {
+                  "exec": {
+                    "command": [
+                      "pg_isready",
+                      "-U",
+                      "postgres"
+                    ]
+                  },
+                  "initialDelaySeconds": 3
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/var/lib/postgresql/data"
+                  },
+                  {
+                    "name": "init",
+                    "mountPath": "/docker-entrypoint-initdb.d",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "artifact-forge-postgres"
+                }
+              },
+              {
+                "name": "init",
+                "secret": {
+                  "secretName": "artifact-forge-postgres",
+                  "items": [
+                    {
+                      "key": "init.sql",
+                      "path": "init.sql"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "artifact-forge-postgres",
+        "namespace": "artifact-storage"
+      },
+      "spec": {
+        "selector": {
+          "app": "artifact-forge-postgres"
+        },
+        "ports": [
+          {
+            "port": 5432,
+            "targetPort": 5432
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "forge-tenant-tls",
+        "namespace": "forge-tenant-split"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "forge-tenant-tls"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "forge-tenant-tls"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "tls",
+                "image": "nginx:1.28.0-alpine",
+                "ports": [
+                  {
+                    "containerPort": 8443
+                  }
+                ],
+                "readinessProbe": {
+                  "tcpSocket": {
+                    "port": 8443
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tls",
+                    "mountPath": "/etc/nginx/nginx.conf",
+                    "subPath": "nginx.conf",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "forge-tenant-tls-tls"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "forge-tenant-tls",
+        "namespace": "forge-tenant-split"
+      },
+      "spec": {
+        "selector": {
+          "app": "forge-tenant-tls"
+        },
+        "ports": [
+          {
+            "port": 443,
+            "targetPort": 8443
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "artifact-forge",
+        "namespace": "artifact-storage"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "artifact-forge"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "artifact-forge"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "artifact",
+                "image": "artifact-go:forge-verification",
+                "imagePullPolicy": "Never",
+                "command": [
+                  "/usr/local/bin/artifact-forge-server"
+                ],
+                "env": [
+                  {
+                    "name": "SERVER_CONFIG_PATH",
+                    "value": "/run/config/config.json"
+                  },
+                  {
+                    "name": "SSL_CERT_FILE",
+                    "value": "/tls/ca.crt"
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "config",
+                    "mountPath": "/run/config",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "memory": "512Mi"
+                  }
+                }
+              },
+              {
+                "name": "tls",
+                "image": "nginx:1.28.0-alpine",
+                "ports": [
+                  {
+                    "containerPort": 8443
+                  }
+                ],
+                "readinessProbe": {
+                  "exec": {
+                    "command": [
+                      "sh",
+                      "-ec",
+                      "wget -T 2 -q -O /dev/null http://127.0.0.1:18080/ 2>&1 | grep -q \"404\""
+                    ]
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 5
+                },
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tls",
+                    "mountPath": "/etc/nginx/nginx.conf",
+                    "subPath": "nginx.conf",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "config",
+                "secret": {
+                  "secretName": "artifact-forge-config"
+                }
+              },
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "artifact-forge-tls"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "artifact-forge",
+        "namespace": "artifact-storage"
+      },
+      "spec": {
+        "selector": {
+          "app": "artifact-forge"
+        },
+        "ports": [
+          {
+            "port": 443,
+            "targetPort": 8443
+          }
+        ]
+      }
+    }
+  ]
+}
