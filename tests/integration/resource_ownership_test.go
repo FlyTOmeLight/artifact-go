@@ -110,6 +110,24 @@ func resourceRaw(
 	return data
 }
 
+func assertOwnerUserJSON(t *testing.T, raw []byte, owner *string) {
+	t.Helper()
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := fields["userID"]; exists {
+		t.Fatalf("response contains ambiguous userID: %s", raw)
+	}
+	want, err := json.Marshal(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(fields["ownerUserID"]) != string(want) {
+		t.Fatalf("ownerUserID = %s want %s: %s", fields["ownerUserID"], want, raw)
+	}
+}
+
 func TestOptionalResourceUserIsolation(t *testing.T) {
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
 		server := fixture.HTTP(t, database, resourceResolver)
@@ -137,8 +155,10 @@ func TestOptionalResourceUserIsolation(t *testing.T) {
 				t.Fatal(err)
 			}
 			rows[n] = row
-			if (row.UserID == nil) != (s.user == nil) || row.CreatedBy != s.actor ||
-				(row.UserID != nil && *row.UserID != *s.user) {
+			raw := resourceRaw(t, server, s, "GET", "/v1/artifacts/"+row.ID, "", 200)
+			assertOwnerUserJSON(t, raw, s.user)
+			if (row.OwnerUserID == nil) != (s.user == nil) || row.CreatedBy != s.actor ||
+				(row.OwnerUserID != nil && *row.OwnerUserID != *s.user) {
 				t.Fatalf("ownership %+v", row)
 			}
 			_, err = client.CreateArtifact(
@@ -237,7 +257,7 @@ func TestOptionalResourceUserIsolation(t *testing.T) {
 			resourceContext(t, b),
 			&api.GetArtifactRequest{ArtifactPath: api.ArtifactPath{ArtifactID: shared.ID}},
 		)
-		if err != nil || read.UserID != nil || read.CreatedBy != userA {
+		if err != nil || read.OwnerUserID != nil || read.CreatedBy != userA {
 			t.Fatalf("shared ownership %+v %v", read, err)
 		}
 		// A legacy resolver cannot ignore the new selector and return shared data.
@@ -526,7 +546,7 @@ func TestResourceFileAndPublicationIsolation(t *testing.T) {
 			files.RequestIdentity{BearerToken: user, ProjectID: project, ResourceUserID: &user},
 		)
 		f := storageRegister(t, fc, fileCtx, "same-key", 0)
-		if f.UserID == nil || *f.UserID != user || f.CreatedBy != user {
+		if f.OwnerUserID == nil || *f.OwnerUserID != user || f.CreatedBy != user {
 			t.Fatalf("file owner %+v", f)
 		}
 		sharedCtx := files.WithRequestIdentity(
@@ -534,9 +554,19 @@ func TestResourceFileAndPublicationIsolation(t *testing.T) {
 			files.RequestIdentity{BearerToken: user, ProjectID: project},
 		)
 		sharedFile := storageRegister(t, fc, sharedCtx, "same-key", 0)
-		if sharedFile.FileID == f.FileID || sharedFile.UserID != nil {
+		if sharedFile.FileID == f.FileID || sharedFile.OwnerUserID != nil {
 			t.Fatal("file scope mixed")
 		}
+		assertOwnerUserJSON(
+			t,
+			resourceRaw(t, server, own, "GET", "/v1/storage/files/"+f.FileID, "", 200),
+			&user,
+		)
+		assertOwnerUserJSON(
+			t,
+			resourceRaw(t, server, shared, "GET", "/v1/storage/files/"+sharedFile.FileID, "", 200),
+			nil,
+		)
 		resourceRaw(t, server, shared, "GET", "/v1/storage/files/"+f.FileID, "", 404)
 		resourceRaw(t, server, shared, "DELETE", "/v1/storage/files/"+f.FileID, "", 404)
 		data := resourceRaw(
@@ -600,7 +630,7 @@ func TestResourceFileAndPublicationIsolation(t *testing.T) {
 		expectError(t, err, 404, "FileNotFound")
 		_, err = binding.Metadata(
 			t.Context(),
-			storage.Scope{TenantID: tenantA, ProjectID: &project, UserID: &user},
+			storage.Scope{TenantID: tenantA, ProjectID: &project, OwnerUserID: &user},
 			[]string{f.FileID},
 		)
 		if err != nil {
@@ -621,7 +651,7 @@ func TestResourceFileAndPublicationIsolation(t *testing.T) {
 			if err := json.Unmarshal(change.Plan, &plan); err != nil {
 				t.Fatal(err)
 			}
-			if plan.Scope.UserID == nil || *plan.Scope.UserID != user {
+			if plan.Scope.OwnerUserID == nil || *plan.Scope.OwnerUserID != user {
 				t.Fatal("reference plan lost personal owner")
 			}
 		}
@@ -690,7 +720,7 @@ func TestResourceOwnershipMigration(t *testing.T) {
 		if err := database.First(&f, "id = ?", oldFile.ID).Error; err != nil {
 			t.Fatal(err)
 		}
-		if a.UserID != nil || f.UserID != nil || a.ScopeKey != "tenant" || f.ScopeKey != "tenant" ||
+		if a.OwnerUserID != nil || f.OwnerUserID != nil || a.ScopeKey != "tenant" || f.ScopeKey != "tenant" ||
 			a.RequestKey != nil {
 			t.Fatalf("migration changed shared ownership: %+v %+v", a, f)
 		}
@@ -700,7 +730,7 @@ func TestResourceOwnershipMigration(t *testing.T) {
 			resourceContext(t, selectedResource{actor: "user-b"}),
 			&api.GetArtifactRequest{ArtifactPath: api.ArtifactPath{ArtifactID: a.ID}},
 		)
-		if err != nil || read.CreatedBy != "user-a" || read.UserID != nil {
+		if err != nil || read.CreatedBy != "user-a" || read.OwnerUserID != nil {
 			t.Fatalf("legacy shared access %+v %v", read, err)
 		}
 		user := "user-a"

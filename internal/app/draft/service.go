@@ -344,7 +344,11 @@ func (s *Service) Delete(c *core.Context, req *api.DeleteDraftRequest) error {
 			return err
 		}
 		plan := version.ReferencePlan{
-			Scope: storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID, UserID: i.ResourceUserID},
+			Scope: storage.Scope{
+				TenantID:    i.TenantID,
+				ProjectID:   i.ProjectID,
+				OwnerUserID: i.ResourceUserID,
+			},
 		}
 		for _, f := range files {
 			plan.References = append(

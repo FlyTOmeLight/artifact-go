@@ -190,7 +190,7 @@ func (s *Service) prepareReferences(
 	defer stopPrepare()
 	target := storage.Scope{
 		TenantID: identity.TenantID, ProjectID: identity.ProjectID,
-		UserID: identity.ResourceUserID,
+		OwnerUserID: identity.ResourceUserID,
 	}
 	var metadata []storage.FileMetadata
 	for start := 0; start < len(files); start += 1000 {
@@ -668,9 +668,9 @@ func (s *Service) persistSourceConflict(
 			raw, e := json.Marshal(
 				ReferencePlan{
 					Scope: storage.Scope{
-						TenantID:  identity.TenantID,
-						ProjectID: identity.ProjectID,
-						UserID:    identity.ResourceUserID,
+						TenantID:    identity.TenantID,
+						ProjectID:   identity.ProjectID,
+						OwnerUserID: identity.ResourceUserID,
 					},
 				},
 			)

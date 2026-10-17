@@ -35,7 +35,7 @@
 
 
 
-每个集合固定类型、租户/可选项目/可选归属用户和编号规则。归属 userID 与实际操作者 createdBy 分开；空 project/user 分别表示租户级/共享，不是通配符。同一完整 scope+type 内名称规范化为小写且唯一；NULL 归属仍有真实数据库唯一约束。归档不删除集合。retentionPolicy返回当前规则与修订；未配置时返回默认禁用规则、revision=0。
+每个集合固定类型、租户/可选项目/可选归属用户和编号规则。请求中的实际操作者 UserID 必填，createdBy 固定记录资源创建者，资源归属 ownerUserID 可空；空 project/owner 分别表示租户级/共享范围，不是通配符。共享范围不代表匿名公开，仅经过 IdentityResolver 授权的已认证用户才能访问对应范围。同一完整 scope+type 内名称规范化为小写且唯一；NULL 归属仍有真实数据库唯一约束。归档不删除集合。retentionPolicy返回当前规则与修订；未配置时返回默认禁用规则、revision=0。
 
 ## 构建与检查
 

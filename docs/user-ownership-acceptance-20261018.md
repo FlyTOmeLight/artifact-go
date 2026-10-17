@@ -4,7 +4,7 @@
 
 ## 交付
 
-- Artifact 与 StorageFile 新增可空 UserID；CreatedBy 保持实际操作者。共享 scope_key 保留原编码，个人 scope_key 使用无歧义的项目长度前缀及用户归属，相关列扩大至 160 字符。
+- Artifact 与 StorageFile 新增可空归属字段；Go 结构与公开 JSON 响应命名为 `OwnerUserID`/`ownerUserID`，数据库列保持 `user_id`（GORM 显式 `column:user_id`，本次重命名无需额外数据迁移）。CreatedBy 固定记录创建者，请求 UserID 表示当前实际操作者。共享 scope_key 保留原编码，个人 scope_key 使用无歧义的项目长度前缀及用户归属，相关列扩大至 160 字符。
 - SDK 使用 RequestIdentity.ResourceUserID 传递 X-Resource-User-ID；省略选择共享，显式空拒绝。IdentityResolver 返回独立 ResourceUserID，中间件与写前复验检查选择一致；旧 resolver 忽略新选择时拒绝，而不是访问共享范围。
 - 内置 Forge 复用当前租户/项目验证，只接受共享或当前用户自己的个人归属，不修改 tenant 服务的接口。
 - 子资源和游标继承完整范围，文件 Metadata/Bind/Release/Statuses 与持久引用计划携带固定用户归属，后台释放从原计划或父集合取得范围。
@@ -35,3 +35,16 @@
 ## 发布顺序
 
 先在受控窗口运行新版本迁移并部署服务，再启用带 ResourceUserID/requestKey 的调用方。旧 SDK 省略用户选择时仍访问共享范围；新客户端遇到旧服务不能移除范围 Header 或请求键重试。产生个人数据后不能回滚到忽略用户维度的旧服务。Memory 仍需独立实现自己的授权、生效、停用恢复和历史规则。
+
+## 2026-10-18 命名调整
+
+- Go 结构与公开 JSON 响应字段从 `UserID`/`userID` 改为 `OwnerUserID`/`ownerUserID`，避免与实际认证 UserID 混淆。
+- 数据库列名保持 `user_id`，GORM 使用显式 `column:user_id` 标签，不引入新列、不做数据迁移（本次重命名无需额外迁移；原 PR 新增 user_id 列的迁移仍然有效）。
+- 请求选择器 `ResourceUserID` 和 HTTP Header `X-Resource-User-ID` 保持不变，继续表达资源归属选择。
+- 实际认证 `UserID` 表示每次请求的当前操作者；`CreatedBy`/`createdBy` 固定记录相应资源的创建者。A 创建共享集合、B 发布版本时，集合 createdBy 保留 A，新版本 createdBy 为 B。
+- 四类精确范围语义不变：tenant 共享、project 共享、tenant 个人、project 个人。NULL 不是通配符，共享不代表匿名公开；仅经过 IdentityResolver 授权的已认证用户才能访问对应范围。
+- Forge 仍仅校验租户成员资格和项目归属，不查询项目 grants，不引入新的权限系统，由已有 IdentityResolver 完成授权。
+- 内部 `storage.Scope` Go 结构使用 `OwnerUserID` 字段，但持久 JSON 键保留 `userID`，确保旧版本个人计划在后台释放时仍能正确识别归属；公开响应使用 `ownerUserID`。
+- 本轮命名调整与文档同步的完整 `make check` 已通过（2026-10-18）：PG17/MySQL8.4 真实集成、race/vet/3 build/OpenAPI 一致性均通过，独立代码 review 无阻断。
+- `tests/integration/resource_ownership_test.go` 包含原始 HTTP 响应断言：个人范围返回 `ownerUserID`、共享范围返回显式 `null`、无 `userID` 字段。
+- `tests/unit/resource_ownership_test.go` 验证旧持久 Scope JSON 的个人、null 和缺字段形式仍能正确解析，并保留原 `userID` 存储键。

@@ -6,7 +6,7 @@ type Artifact struct {
 	ID              string  `gorm:"size:36;primaryKey"`
 	TenantID        string  `gorm:"size:64;not null;uniqueIndex:uk_artifact_name,priority:1;uniqueIndex:uk_artifact_request,priority:1"`
 	ProjectID       *string `gorm:"size:64;index"`
-	UserID          *string `gorm:"size:64;index"`
+	OwnerUserID     *string `gorm:"column:user_id;size:64;index:idx_artifacts_user_id"`
 	RequestKey      *string `gorm:"size:64;uniqueIndex:uk_artifact_request,priority:4"`
 	ScopeKey        string  `gorm:"size:160;not null;uniqueIndex:uk_artifact_name,priority:2;uniqueIndex:uk_artifact_request,priority:2"`
 	Type            string  `gorm:"size:64;not null;uniqueIndex:uk_artifact_name,priority:3"`

@@ -315,7 +315,7 @@ Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、�
 | `table/version_file.go` | VersionFile / version_files | VersionID+LogicalPath唯一、VersionID+FileID唯一；保存内部ReferenceID及文件Size/ContentType/DeclaredChecksum快照，不保存Bucket/ObjectKey，不跨域外键到StorageFile |
 | `table/retention_policy.go` | RetentionPolicy / retention_policies | 用 ArtifactID 查询该集合的版本保留规则、Revision 条件写入、初始化默认策略事实；不运行 Plan |
 | `table/create_request.go` | CreateRequest / create_requests | 按 ArtifactID/ActorID/requestKey 查成功记录、插入指纹及 VersionID；不缓存 HTTP 响应，不自行编码请求 |
-| `table/reference_change.go` | ReferenceChange / reference_changes | (ArtifactID,ActorID,OperationKind,RequestKey)唯一；固定指纹、scope、当前AttemptID、preparing/committed/aborted、截止时间、新引用计划及原始ExpiresAt、appliedRevision等成功回执；只允许当前attempt的条件提交/中止，不保存大JSON重放副本 |
+| `table/reference_change.go` | ReferenceChange / reference_changes | (ArtifactID,ActorID,OperationKind,RequestKey)唯一；固定指纹、scope（`storage.Scope` JSON，内部键使用 `userID` 而非公开响应的 `ownerUserID`，确保旧版本个人计划后台释放不丢失归属）、当前AttemptID、preparing/committed/aborted、截止时间、新引用计划及原始ExpiresAt、appliedRevision等成功回执；只允许当前attempt的条件提交/中止，不保存大JSON重放副本 |
 | `table/background_task.go` | BackgroundTask / background_tasks | Kind/TargetID唯一记录；引用补偿TargetID为AttemptID，删除交接使用独立ID，保存完整不可变ReferenceID/FileID/scope/notBefore载荷，禁止可复用逻辑请求键覆盖旧任务；SKIP LOCKED 领取、DB 时间、LeaseToken 条件续租/完成/失败/重排 SQL；不判断业务目标是否合法 |
 | `table/schema.go` | 显式列出artifact十一种模型 | 新MVP的AutoMigrate和双库选项；不管理storage模型，无历史升级链 |
 | `table/storage/file.go` | StorageFile / storage_files | 精确scope、物理位置、声明、expiresAt、LastGrantExpiresAt、状态；持有关系归StorageReference；保存RequestKey/RequestHash/CreatedBy/ScopeKey及登记唯一键，按ID批量排序锁和条件状态更新 |
@@ -341,7 +341,7 @@ Storage 配置包括固定 BackendID、S3/STS Endpoint、Region、path-style、�
 
 artifact业务错误码与对外错误结构放 `sdk/go/artifactv1/artifact_errors.go`；普通HTTP错误复用框架 serrors，VersionDeleted 和 DraftDeleted 的特殊响应分别在 version/controller.go 与 draft/controller.go 输出，不设独立 httperror 包；各 Service 直接使用框架错误类型及这些固定错误码，不再建立 internal/errors 的重复定义。涉及删除版本或已删除创建/保存结果草稿的错误携带必要身份，PUT成功重放的DraftDeleted另带appliedRevision，由对应controller输出 HTTP 410，SDK 保留框架错误链。storage普通错误复用框架；确需稳定的存储文件错误码归storage_api_file.go，授权错误码归storage_api_grant.go，不导入artifactv1错误包。外部网络错误的protocol→领域错误转换留在storage，DB唯一冲突到业务错误留在相应app。
 
-身份接入提案：公开 `service.IdentityResolver` 接收本次 `*http.Request`，返回 `service.RequestIdentity` 或错误；RequestIdentity 只包含 UserID、TenantID、可选 ProjectID 和当前归属 active/deleted 状态，不带角色/Permissions。service 构造时必须注入 resolver，在 HTTP 请求进入业务前执行，再由内部 scope 保存经过验证的结果。service 包负责公开类型到内部类型的转换，scope 不反向导入 service，避免循环 import。SDK 的 RequestIdentity 仍只是 BearerToken 与作用域选择输入，不可直接转换为可信服务端身份。
+身份接入提案：公开 `service.IdentityResolver` 接收本次 `*http.Request`，返回 `service.RequestIdentity` 或错误；RequestIdentity 包含实际操作者 UserID、TenantID、可选 ProjectID、可选资源归属 ResourceUserID 和当前归属 active/deleted 状态，不带角色/Permissions。service 构造时必须注入 resolver，在 HTTP 请求进入业务前执行，再由内部 scope 保存经过验证的结果。service 包负责公开类型到内部类型的转换，scope 不反向导入 service，避免循环 import。SDK 的 RequestIdentity 仍只是 BearerToken 与作用域选择输入（含 ResourceUserID），不可直接转换为可信服务端身份。
 
 归属状态表示租户及可选项目整体是否仍有效，不表示操作权限。历史作用域可返回 deleted；读取与已成功发布请求的幂等确认按原设计允许，新建集合、上传及其续发与新发布检查 active。后台根据已保存的目标执行，不需要操作者 resolver。独立 Build 的真实 resolver 提供方式仍由接入环境确定；缺失时不得启用把 Header 当身份的生产实现，测试夹具可显式注入受控 resolver。
 
@@ -576,7 +576,7 @@ Plan计算排除显式保护、配置保护的普通 alias 和最低保留集合
 
 Table方法接收标准context和本次tx，已建立事务时不能改用基础连接。Controller不传tx；backgroundtask只将本地tx传给version清理规则；对storage的交接调用在事务外，不传tx。
 
-内部scope包只负责取得可信 UserID/TenantID/ProjectID 并比较精确归属。可信身份的TenantID必须匹配`^[A-Za-z0-9_-]{1,64}$`，保留大小写，不做slug转换；TenantID位于artifact:// URI的authority，因此拒绝`/`、`:`等分隔字符，避免生成无法解析或改变归属层级的URI。UserID及非空ProjectID继续使用opaque标识：最多64个Unicode字符、无首尾空白、不含NUL/CR/LF；ProjectID逐路径段编码，不套用TenantID字符集。缺失ProjectID表示租户直属范围。ProjectID 为空只表示租户直属范围，UserID 不等于资源所有者限制；本版不添加权限字段或租户反调授权 Adapter。读取、重试、URI 解析及后台目标定位都不能扩大作用域。请求字段scope另表示授权的S3 Actions集合，两者不能混为权限来源。
+内部scope包只负责取得可信 UserID/TenantID/ProjectID/ResourceUserID 并比较精确归属。UserID 是必填实际操作者，ResourceUserID 是可选归属用户，与资源 OwnerUserID 对应；租户/项目与个人/共享组合形成四类精确范围，空值不是通配。详见[归属契约](service-consumer-design-20261016.md)。可信身份的TenantID必须匹配`^[A-Za-z0-9_-]{1,64}$`，保留大小写，不做slug转换；TenantID位于artifact:// URI的authority，因此拒绝`/`、`:`等分隔字符，避免生成无法解析或改变归属层级的URI。UserID及非空ProjectID/ResourceUserID继续使用opaque标识：最多64个Unicode字符、无首尾空白、不含NUL/CR/LF；ProjectID逐路径段编码，不套用TenantID字符集。缺失ProjectID表示租户直属范围，缺失ResourceUserID表示共享范围。ProjectID 为空只表示租户直属范围，UserID 不等于资源所有者限制；本版不添加权限字段或租户反调授权 Adapter。读取、重试、URI 解析及后台目标定位都不能扩大作用域。请求字段scope另表示授权的S3 Actions集合，两者不能混为权限来源。
 
 ## storage交接和对象存储边界
 
@@ -594,7 +594,7 @@ POST /v1/storage/grants请求包含1–1000个唯一fileIDs、scope及可选正�
 
 成功200返回一份STS credentials{accessKeyID,secretAccessKey,sessionToken}、expiresAt、endpoint、region、forcePathStyle、展开后的actions及按输入顺序的files:[{fileID,bucket,objectKey}]，供客户端直接操作S3。所有文件必须属于同一配置后端；没有逐文件STS或逐项error。任何文件、权限、scope或状态检查失败整份拒绝；策略编码超出后端限制返回400 GrantScopeTooLarge，由调用方拆批，不能扩大为prefix/整bucket或悄悄少授部分文件。文件夹同样按登记的精确key集合授权，逻辑相对路径只进DraftFile/VersionFile。
 
-StorageFile保存RequestKey、RequestHash、CreatedBy和ScopeKey，唯一键为(TenantID,ScopeKey,CreatedBy,RequestKey)。预期size、contentType和可选declaredChecksum规范化比较；同键同参数返回原FileID和当前状态，不延长TTL、不复活终态；同键异参数返回该项409错误。GetFile保留单资源GET；DeleteFile保留单资源DELETE，只接受无有效引用的文件，首次/进行中202，deleted重复200，有引用409；缺失或scope不符不泄漏文件信息。
+StorageFile保存RequestKey、RequestHash、CreatedBy、OwnerUserID（可空，数据库列保持 user_id）和ScopeKey，唯一键为(TenantID,ScopeKey,CreatedBy,RequestKey)。预期size、contentType和可选declaredChecksum规范化比较；同键同参数返回原FileID和当前状态，不延长TTL、不复活终态；同键异参数返回该项409错误。GetFile保留单资源GET；DeleteFile保留单资源DELETE，只接受无有效引用的文件，首次/进行中202，deleted重复200，有引用409；缺失或scope不符不泄漏文件信息。
 
 StorageFile状态为uploading → ready → bound → deleting → deleted；未引用的uploading/ready可显式删除或到期回收。BindReferences接受同精确scope的未过期ready或仍被引用的bound；同(ConsumerID,ReferenceID)与同FileID/scope重复Bind返回原结果，异参拒绝，released永久拒绝。新持有关系使用新ReferenceID，不依据内容去重。FileID/ObjectKey永不复用。
 

@@ -65,11 +65,11 @@ tenant 服务的 tenants、users、memberships、teams、projects 和 grants 保
 
 ### 必须保持的关系
 
-- 一个 Artifact 属于一个租户，可以进一步属于该租户的一个项目。
+- 一个 Artifact 属于一个租户，可以进一步属于该租户的一个项目；OwnerUserID 有值表示该范围内的个人资源，空值表示共有资源。
 - 一个 Artifact 有且只有一个创建时确定的 Type，全部版本继承集合的类型。
 - 一个 Version 只属于一个 Artifact。
 - storage 文件登记不要求 Artifact 存在，也不带 ArtifactID、Type 或逻辑路径。
-- 一个 StorageFile 可被同一精确 scope 内的多个草稿、版本乃至不同 Artifact 引用；同一清单中不允许重复 FileID 或逻辑路径。VersionFile 是发布时建立的清单快照，DraftFile 是可编辑清单，StorageReference 以独立 ReferenceID 记录各次持有关系。不同项目、租户直属与项目之间均不能复用。
+- 一个 StorageFile 可被同一精确 scope 内的多个草稿、版本乃至不同 Artifact 引用；同一清单中不允许重复 FileID 或逻辑路径。VersionFile 是发布时建立的清单快照，DraftFile 是可编辑清单，StorageReference 以独立 ReferenceID 记录各次持有关系。不同租户、项目、个人归属及个人/共享范围之间均不能复用。
 - alias 目标必须与 alias 属于同一个 Artifact。
 - 清理全部版本不删除 Artifact 的编号状态。
 - 平台账号可以属于零个或多个租户。用户与项目之间通过授权建立访问关系。
@@ -84,12 +84,18 @@ Type 仅接受 1 至 64 个字符的小写 ASCII 标识，以字母开头，后�
 
 ## 请求身份与作用域隔离
 
-### 两种资源作用域
+### 资源作用域
+
+完整资源作用域由租户、项目和可选归属用户组合确定，共四类精确范围。2026-10-18 新增可选用户归属后，作用域从两类扩展到四类：tenant 共享、project 共享、tenant 个人、project 个人。NULL 不是通配符，共享范围不代表匿名公开；仅经过 IdentityResolver 授权的已认证用户才能访问对应范围，Forge 仍只校验租户成员和项目归属，不查询项目 grants，不引入新的权限系统。
 
 | 作用域 | 适用资源 | 持久字段 |
 | --- | --- | --- |
-| 租户级 | 企业共享配置、提示词、模板 | TenantID 有值，ProjectID 为 NULL |
-| 项目级 | 项目数据集、模型、配置 | TenantID、ProjectID 均有值 |
+| 租户共享 | 企业共享配置、提示词、模板 | TenantID 有值，ProjectID 为 NULL，OwnerUserID 为 NULL |
+| 项目共享 | 项目数据集、模型、配置 | TenantID、ProjectID 有值，OwnerUserID 为 NULL |
+| 租户内个人 | 租户内个人物料 | TenantID 有值，ProjectID 为 NULL，OwnerUserID 有值 |
+| 项目内个人 | 项目内个人物料 | TenantID、ProjectID、OwnerUserID 均有值 |
+
+完整的资源归属契约、精确范围编码、Header 选择器和迁移策略见[可选用户归属与集合幂等创建](service-consumer-design-20261016.md)。
 
 第一版的 Forge 接入层要求有效用户和 active 租户成员资格；选择项目时只核对项目属于该租户，不查询项目 grants 或 read/write/manage。平台 operator 不能绕过租户准入。artifact 领域层不校验读取、发布、alias、版本保护、保留策略和删除的角色与操作权限。在可信请求作用域内，调用方可执行各类操作，但必须满足资源状态、保护、引用与并发控制等业务条件。当前 Forge 接入只接受 active scope，历史 deleted scope 暂拒绝；核心服务的 OwnershipDeleted 注入契约保留给具备权威历史授权的接入方。
 
@@ -102,15 +108,16 @@ Type 仅接受 1 至 64 个字符的小写 ASCII 标识，以字母开头，后�
 | UserID | 必填，已验证的当前操作者，用于审计和创建人记录，不作为资源所有者限制 |
 | TenantID | 必填，本次请求的租户 |
 | ProjectID | 可选，本次请求的项目；为空仅表示租户直属范围，不表示所有项目 |
+| ResourceUserID | 可选，资源归属用户选择；为空表示共享范围，显式空值拒绝。2026-10-18 新增，与 Artifact/StorageFile 的 OwnerUserID 对应 |
 
-context 不传 Permissions、角色或管理员标志。接入方建立新建集合所用的作用域时，负责确认租户存在、状态有效，以及项目属于该租户。每次请求仅使用一个确定的租户/项目作用域。
+context 不传 Permissions、角色或管理员标志。接入方建立新建集合所用的作用域时，负责确认租户存在、状态有效，以及项目属于该租户。每次请求仅使用一个确定的完整资源作用域（tenant 共享/project 共享/tenant 个人/project 个人）。
 
 artifact-go 执行以下检查：
 
 - 请求必须具有完整有效的身份和作用域 context。
-- 目标 Artifact 的 TenantID、ProjectID 必须与 context 一致；集合列表先按该作用域过滤，再排序、分页。
-- 创建集合从 context 写入归属；请求体若提供 ProjectID，必须与 context 一致，不能覆盖作用域。
-- 版本、草稿、alias 和版本文件清单必须属于目标集合；持久 URI 中的归属和类型必须与 context 及数据库记录匹配。storage 文件单独检查其精确租户/项目归属，发布绑定再核对与集合相同。
+- 目标 Artifact 的 TenantID、ProjectID、OwnerUserID 必须与 context 一致；集合列表先按该完整作用域过滤，再排序、分页。
+- 创建集合从 context 写入归属（含 OwnerUserID）；请求体若提供 ProjectID，必须与 context 一致，不能覆盖作用域。
+- 版本、草稿、alias 和版本文件清单必须属于目标集合；持久 URI 中的归属和类型必须与 context 及数据库记录匹配。storage 文件单独检查其精确租户/项目/用户归属，发布绑定再核对与集合相同。
 - 资源状态、Protected、alias 引用、Revision、待绑定文件有效期等业务条件继续检查。
 - 重试和缓存命中仍先检查身份及作用域，不能通过幂等结果绕过隔离。
 
@@ -180,11 +187,11 @@ StorageFile 独占保存 BackendID、Bucket、ObjectKey，后续授权、确认�
 ### URI 解析过程
 
 1. 解析 scheme、租户、可选项目、物料类型、ArtifactID 和引用类型。
-2. 确认引用中的 TenantID、ProjectID 与请求 context 一致，再按引用中的 TenantID、ProjectID、Type 与 ArtifactID 校验数据库中的集合归属和类型。
+2. 确认引用中的 TenantID、ProjectID 与请求 context 一致，再按 ArtifactID、Type 和可信完整作用域校验集合。URI 不包含归属用户，集合的 OwnerUserID 仍须与 context.ResourceUserID 精确一致，已知 URI 不能绕过个人归属隔离。
 3. 检查目标资源状态及本次操作的业务条件。
 4. 查询指定版本，或在一次数据库读取中解析 alias 到可见版本。
 5. 返回 JSON 内容、固定引用和文件清单。
-6. 客户端可用解析结果中的FileID调用 POST /v1/storage/grants，scope选download或显式s3:GetObject。storage独立检查可信租户/项目归属及文件可读状态后签发STS，不接收业务来源、不回查版本或草稿。Resolve只返回元数据；取得FileID不是身份授权证明。
+6. 客户端可用解析结果中的FileID调用 POST /v1/storage/grants，scope选download或显式s3:GetObject。storage独立检查可信租户/项目/归属用户及文件可读状态后签发STS，不接收业务来源、不回查版本或草稿。Resolve只返回元数据；取得FileID不是身份授权证明。
 
 用户修改 URI 中的租户、项目或物料类型部分，不会改变数据库中的真实归属和类型。
 
@@ -392,8 +399,10 @@ type Artifact struct {
 	TenantID string `gorm:"size:64;not null;uniqueIndex:uk_artifact_name,priority:1"`
 	// 租户级为 NULL，项目级为租户服务的项目 ID。
 	ProjectID *string `gorm:"size:64;index"`
-	// 业务层生成 tenant 或 project:<ProjectID>，不接受外部赋值。
-	ScopeKey string `gorm:"size:80;not null;uniqueIndex:uk_artifact_name,priority:2"`
+	// 2026-10-18 新增：资源归属用户，可空。数据库列保持 user_id，Go 字段为 OwnerUserID。
+	OwnerUserID *string `gorm:"column:user_id;size:64;index:idx_artifacts_user_id"`
+	// 共享为 tenant 或 project:<ProjectID>；个人为 user:<项目UTF-8字节数>:<项目ID或空>:<归属用户ID>。
+	ScopeKey string `gorm:"size:160;not null;uniqueIndex:uk_artifact_name,priority:2"`
 	// 调用方传入的稳定业务类型，如 skill、model；创建后固定。
 	Type string `gorm:"size:64;not null;uniqueIndex:uk_artifact_name,priority:3"`
 	// 规范化的小写集合名称，在同一租户、作用域及类型内唯一。
@@ -528,21 +537,23 @@ artifact 的十一张表是 Artifact、Version、Draft、DraftFile、DraftCreate
 
 ReferenceChange 唯一键为 (ArtifactID,ActorID,OperationKind,RequestKey)，保存可信作用域、固定 RequestHash、当前 AttemptID、preparing/committed/aborted、执行 Deadline、完整新增 ReferenceID/FileID 及原始 ExpiresAt 计划、结果身份和可选 AppliedRevision。ArtifactID 是域内外键，结果 DraftID 不设硬删级联。指纹包含 DraftID、expectedRevision 等完整输入。旧 attempt 的不可变补偿载荷同事务交给 BackgroundTask 后，才可切换到新 attempt。终态可清理已可靠交接的准备明细，保留去重和决策所需小型记录；不保存大 JSON 用于后台重放。
 
+引用计划中的可信作用域保存为 `storage.Scope` 类型的 JSON 载荷，包含 TenantID、ProjectID 和可选 OwnerUserID。内部 JSON 键名使用 `userID`（而非公开响应的 `ownerUserID`），以便旧版本个人计划在后台释放时仍能正确识别归属；公开 HTTP/SDK 响应使用 `ownerUserID`，数据库列保持 `user_id`。这一内部与公开命名差异仅影响持久计划载荷，不影响请求选择器或响应字段。
+
 DraftFile 同样保存内部唯一 ReferenceID；公开清单仍只使用 FileID/path 及确认元数据，客户端不提交 ReferenceID。
 
 
 
 | 表 | 必须保存的字段与约束 |
 | --- | --- |
-| storage_files | ID主键；TenantID、ProjectID、ScopeKey、CreatedBy；RequestKey、RequestHash；唯一(TenantID,ScopeKey,CreatedBy,RequestKey)；BackendID/Bucket/ObjectKey位置唯一；ExpectedSize、确认后的Size、ContentType、三项可空声明摘要；State；ExpiresAt、LastGrantExpiresAt；CreatedAt、UpdatedAt、DeletedAt、NextSweepAt |
+| storage_files | ID主键；TenantID、ProjectID、OwnerUserID（可空，数据库列 user_id）、ScopeKey、CreatedBy；RequestKey、RequestHash；唯一(TenantID,ScopeKey,CreatedBy,RequestKey)；BackendID/Bucket/ObjectKey位置唯一；ExpectedSize、确认后的Size、ContentType、三项可空声明摘要；State；ExpiresAt、LastGrantExpiresAt；CreatedAt、UpdatedAt、DeletedAt、NextSweepAt |
 | storage_references | (ConsumerID,ReferenceID)联合主键；不可变FileID、TenantID/ScopeKey；FileID外键到storage_files；CreatedAt、ReleasedAt（NULL表示有效）、ReleaseRequiresDeletion；按FileID查有效引用的索引；不存在业务owner字段或跨域外键；先Release可创建终态墓碑 |
 | storage_tasks | ID、Kind、TargetID唯一目标；State、NextRunAt、LeaseUntil、LeaseToken、Attempts、LastError、CreatedAt、UpdatedAt；独立于artifact后台任务表，由storage拥有领取与执行 |
 
-State 为 uploading、ready、bound、deleting、deleted。初始 ExpectedSize 固定，确认前 Size 为 NULL；成功确认后 Size 等于 ExpectedSize。StorageReference 保存每次持有关系及终态墓碑；bound 当且仅当存在有效引用，deleting/deleted 必须无有效引用。引用写入和计数判断都在对应文件行锁下进行。storage 仅认识服务认证产生的 ConsumerID、ReferenceID、FileID 及可信作用域，不知道版本、草稿、alias 或保留规则。两域分别声明模型清单和初始化入口，可以使用同库或独立库，事务边界始终独立。
+State 为 uploading、ready、bound、deleting、deleted。初始 ExpectedSize 固定，确认前 Size 为 NULL；成功确认后 Size 等于 ExpectedSize。StorageReference 保存每次持有关系及终态墓碑；bound 当且仅当存在有效引用，deleting/deleted 必须无有效引用。引用写入和计数判断都在对应文件行锁下进行。storage 仅认识服务认证产生的 ConsumerID、ReferenceID、FileID 及可信作用域（含 OwnerUserID），不知道版本、草稿、alias 或保留规则。两域分别声明模型清单和初始化入口，可以使用同库或独立库，事务边界始终独立。
 
 ### 唯一性与外键
 
-租户级 ProjectID 为 NULL，不能依赖 (TenantID, ProjectID, Type, Name) 唯一索引约束重名。ScopeKey 统一生成 tenant 或 project:<ProjectID>，唯一键采用 (TenantID, ScopeKey, Type, Name)。ScopeKey 是内部约束字段，不增加新的领域作用域。
+租户级 ProjectID 为 NULL，不能依赖 (TenantID, ProjectID, Type, Name) 唯一索引约束重名。共享 ScopeKey 为 `tenant` 或 `project:<ProjectID>`；两种个人范围统一为 `user:<项目ID的UTF-8字节数>:<项目ID或空>:<归属用户ID>`，无项目时为 `user:0::<归属用户ID>`。项目长度前缀避免标识中包含冒号时发生碰撞。ScopeKey 最长 160 字符。唯一键采用 (TenantID, ScopeKey, Type, Name)。ScopeKey 是内部约束字段，不增加新的领域作用域。
 
 通过模型关联的 foreignKey、references 和 constraint 标签声明以下外键，AutoMigrate 负责创建；仅声明 ArtifactID、VersionID 等标量字段不会自动生成外键：
 
@@ -646,7 +657,7 @@ storage 负责登记、授权、确认、绑定状态与物理回收；artifact 
 - scope 必须且只能是 {preset:"upload"}、{preset:"download"} 或 {actions:["s3:..."]}。preset与actions按字段存在互斥，显式null、空对象、未知字段、空actions、重复Action、未知preset、通配符及未支持Action均400 InvalidGrantScope。自定义Actions使用S3原名，不另设object.write等翻译层。
 - upload预设展开为s3:PutObject、s3:ListMultipartUploadParts、s3:AbortMultipartUpload；download展开为s3:GetObject。首期自定义支持这四个Actions的非空子集。预设是服务端固定契约，不接受用户重定义；自定义申请仍受相同的业务条件与服务端允许范围限制，不接收原始IAM Policy、任意bucket/key或owner。
 - PutObject覆盖普通PUT和multipart创建、分片上传、完成；ListMultipartUploadParts用于已知UploadID恢复；AbortMultipartUpload只中止未完成分片。GetObject覆盖GET、Range和HEAD，不能伪造“只HEAD不下载”的权限。客户端保存UploadID，不依赖ListBucketMultipartUploads列桶恢复。不支持DeleteObject、ListBucket、ACL/标签及bucket/IAM管理操作。
-- 所有请求都由storage检查可信TenantID/ProjectID与每个StorageFile精确一致；跨作用域或不存在文件404，已知FileID本身不是访问凭证。首期同一作用域内不区分文件创建者或Artifact私有权限。身份与作用域仍由可信接入层验证，不能信任客户端自行声明。
+- 所有请求都由storage检查可信 TenantID、ProjectID、ResourceUserID 与每个 StorageFile 的 TenantID、ProjectID、OwnerUserID 精确一致；跨作用域或不存在文件404，已知FileID本身不是访问凭证。同一完整作用域内不再按文件创建者区分权限，也不检查每个 Artifact 的独立权限。身份与作用域仍由可信接入层验证，不能信任客户端自行声明。
 - GetObject允许未过期ready文件，或仍有有效引用的bound文件；不要求已保存草稿或发布版本，不检查业务清单、owner来源或版本可见性。文件可以来自不同版本、草稿或尚未绑定业务，只要处于同一可信作用域和配置后端，且满足状态条件，就能放在同一批中授权。ready和bound也可混批读取。
 - 任一上传相关Action仍要求active归属、同精确身份作用域、未过期uploading文件。uploading不签发新读取权限，ready/bound不签发新上传权限，deleting/deleted拒绝任何新授权；已知同作用域文件状态或期限不满足时409。混合GetObject与上传Actions无法同时满足当前状态要求，整体409，不自动拆分或缩小权限。首期仍不接入租户角色权限系统；已识别动作被服务允许规则拒绝时403 GrantScopeDenied。自定义Actions不能绕过相同的归属和状态约束。
 - ttlSeconds省略时使用所请求动作对应的配置上限，提供时必须为正整数。实际有效期取申请期限、所有相关配置上限、签发者剩余期限，以及所有上传目标和读取时仍为ready的目标ExpiresAt的最小值。读取bound文件不使用其历史准备ExpiresAt；整批读混合ready/bound时，仍取全部适用上限的最小值。绝对截止时间在锁内判定时固定，不因STS调用延迟延长；返回时已过期则拒绝。签发者最短期限无法满足时拒绝，不能向上取整越界。
@@ -693,7 +704,7 @@ bound 不按准备 TTL 回收。GC、BindReferences、ReleaseReferences 共用�
 
 CreateGrant完整归storage模块，由storage/controller绑定请求，storage/grant负责文件授权事务和STS签发。artifact只负责版本/草稿的内容与清单是否可见，以及保存、发布或删除时增减文件引用。客户端通常先取得业务清单，再按FileID向storage申请读取；已经持有合法FileID的客户端也可直接申请。两种路径都执行相同的可信精确作用域与文件状态检查，不新增业务授权票据、artifact回调或跨域grant编排。
 
-引用是保留文件的依据，不是读取ACL。删除版本A会隐藏A的JSON及清单并释放A的引用；如果版本B或某个草稿仍引用F，F保持bound，同作用域中已知F的调用者仍可申请新读取授权。删除某一业务来源不承诺阻止通过该来源得知FileID的调用者再次读取。草稿移除文件、替换附件或删除草稿遵循同一规则；FileID不可访问其他租户/项目，UserID仅用于审计、不形成创建者独享权限。将来增加Artifact私有权限必须另行设计文件权限关联，不能沿用本期作用域内共享的假设。
+引用是保留文件的依据，不是读取ACL。删除版本A会隐藏A的JSON及清单并释放A的引用；如果版本B或某个草稿仍引用F，F保持bound，同作用域中已知F的调用者仍可申请新读取授权。删除某一业务来源不承诺阻止通过该来源得知FileID的调用者再次读取。草稿移除文件、替换附件或删除草稿遵循同一规则；FileID不可访问其他租户/项目/用户范围，OwnerUserID 标识资源归属但不形成创建者独享权限，实际访问仍由 IdentityResolver 授权。将来增加Artifact私有权限必须另行设计文件权限关联，不能沿用本期作用域内共享的假设。
 
 ready且未过期的文件在保存草稿前即可预览；读取不绑定文件、不延长准备TTL，也不新增StorageReference。其读取授权期限受当时ExpiresAt限制，后来绑定不会延长已发凭证。bound不因历史准备ExpiresAt到期而禁读。读取历史资源仍须有效的可信历史作用域，读取本身不新增active归属要求；写授权仍要求active。
 
@@ -855,7 +866,7 @@ Go SDK 方法均接收 context.Context，JSON 契约使用 json.RawMessage 或�
 
 #### 请求身份与 SDK 构造
 
-SDK 每次请求从 context 读取 RequestIdentity，把 BearerToken 写入 Authorization: Bearer，把 TenantID、ProjectID 分别写入 X-Tenant-ID、X-Project-ID；ProjectID 为空时省略对应 Header，表示租户直属范围。RequestID 可选，写入 X-Request-ID。Client 不保存请求身份，也不在并发请求时修改共享默认 Header。
+SDK 每次请求从 context 读取 RequestIdentity，把 BearerToken 写入 Authorization: Bearer，把 TenantID、ProjectID 分别写入 X-Tenant-ID、X-Project-ID；ProjectID 为空时省略对应 Header，表示租户直属范围。ResourceUserID 非 nil 时写入 X-Resource-User-ID，省略表示共享范围，不自动使用当前操作者。RequestID 可选，写入 X-Request-ID。Client 不保存请求身份，也不在并发请求时修改共享默认 Header。
 
 这些 Header 是作用域选择输入，不是身份或成员关系证明。接入方 Middleware 验证 Bearer 身份并确认作用域来源可信，再建立服务端 context；受信网关注入作用域时须清除外部同名 Header。artifact-go 仍不检查业务操作权限。
 
@@ -1042,6 +1053,7 @@ type ArtifactResponse struct {
 	ID              string            `json:"id"`
 	TenantID        string            `json:"tenantID"`
 	ProjectID       *string           `json:"projectID"`
+	OwnerUserID     *string           `json:"ownerUserID"` // 共享为 null，与 createdBy 分开。
 	Type            string            `json:"type"`
 	Name            string            `json:"name"`
 	ArtifactURI     string            `json:"artifactUri"`
@@ -1388,7 +1400,7 @@ API 副本无本地业务状态，storage 文件状态在 storage 数据库，�
 
 ## 实施顺序
 
-1. 打通身份 context、两种作用域隔离、双数据库 GORM 建表及纯数据库版本的端到端读写。
+1. 打通身份 context、四类精确作用域隔离、双数据库 GORM 建表及纯数据库版本的端到端读写。
 2. 实现两种编号、持久幂等、alias 和集合级并发控制。
 3. 实现保留预览、无文件清理和持久任务执行器。
 4. 实现 S3 短期凭证授权与核验、登记规模限制、storage文件准备、持久引用交接发布、访问授权及两域回收交接，完成客户端分片上传验收。

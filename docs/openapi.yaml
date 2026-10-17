@@ -39,6 +39,10 @@ definitions:
         type: string
       name:
         type: string
+      ownerUserID:
+        description: OwnerUserID is nil for tenant/project shared resources; CreatedBy
+          records the creator.
+        type: string
       projectID:
         type: string
       retentionPolicy:
@@ -50,8 +54,6 @@ definitions:
       type:
         type: string
       updatedAt:
-        type: string
-      userID:
         type: string
       versionScheme:
         type: string
@@ -537,11 +539,13 @@ definitions:
         type: string
       fileID:
         type: string
+      ownerUserID:
+        description: OwnerUserID is nil for tenant/project shared resources; CreatedBy
+          records the creator.
+        type: string
       size:
         type: integer
       state:
-        type: string
-      userID:
         type: string
     type: object
   storagev1.CreateGrantRequest:
@@ -600,11 +604,13 @@ definitions:
         type: string
       fileID:
         type: string
+      ownerUserID:
+        description: OwnerUserID is nil for tenant/project shared resources; CreatedBy
+          records the creator.
+        type: string
       size:
         type: integer
       state:
-        type: string
-      userID:
         type: string
     type: object
   storagev1.GrantCredentials:
@@ -684,13 +690,15 @@ definitions:
         type: string
       fileID:
         type: string
+      ownerUserID:
+        description: OwnerUserID is nil for tenant/project shared resources; CreatedBy
+          records the creator.
+        type: string
       requestKey:
         type: string
       size:
         type: integer
       state:
-        type: string
-      userID:
         type: string
     type: object
   storagev1.TenantBucketResponse:

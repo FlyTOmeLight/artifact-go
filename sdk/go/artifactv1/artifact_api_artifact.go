@@ -22,10 +22,13 @@ type GetArtifactRequest struct{ ArtifactPath }
 type ArchiveArtifactRequest struct{ ArtifactPath }
 
 type ArtifactResponse struct {
-	ID              string            `json:"id"`
-	TenantID        string            `json:"tenantID"`
-	ProjectID       *string           `json:"projectID"`
-	UserID          *string           `json:"userID"`
+	ID        string  `json:"id"`
+	TenantID  string  `json:"tenantID"`
+	ProjectID *string `json:"projectID"`
+
+	// OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.
+	OwnerUserID *string `json:"ownerUserID"`
+
 	Type            string            `json:"type"`
 	Name            string            `json:"name"`
 	ArtifactURI     string            `json:"artifactUri"`

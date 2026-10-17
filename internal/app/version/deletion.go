@@ -106,9 +106,9 @@ func markDeleting(tx *db.DB, row *table.Version, automatic bool, now time.Time) 
 		}
 		plan := ReferencePlan{
 			Scope: storage.Scope{
-				TenantID:  artifact.TenantID,
-				ProjectID: artifact.ProjectID,
-				UserID:    artifact.UserID,
+				TenantID:    artifact.TenantID,
+				ProjectID:   artifact.ProjectID,
+				OwnerUserID: artifact.OwnerUserID,
 			},
 			VersionID: row.ID,
 		}

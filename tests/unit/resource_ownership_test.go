@@ -1,11 +1,43 @@
 package unit_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 )
+
+func TestStoredReferenceScopeRetainsOwner(t *testing.T) {
+	for _, raw := range []string{
+		`{"tenantID":"tenant","projectID":"project","userID":"user"}`,
+		`{"tenantID":"tenant","projectID":null,"userID":null}`,
+		`{"tenantID":"tenant","projectID":null}`,
+	} {
+		t.Run(raw, func(t *testing.T) {
+			var target storage.Scope
+			if err := json.Unmarshal([]byte(raw), &target); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(raw, `"userID":"user"`) {
+				if target.OwnerUserID == nil || *target.OwnerUserID != "user" {
+					t.Fatalf("stored scope lost owner: %+v", target)
+				}
+			} else if target.OwnerUserID != nil {
+				t.Fatalf("shared scope acquired owner: %+v", target)
+			}
+			encoded, err := json.Marshal(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(encoded), `"userID":`) ||
+				strings.Contains(string(encoded), `"ownerUserID":`) {
+				t.Fatalf("persisted scope encoding changed: %s", encoded)
+			}
+		})
+	}
+}
 
 func TestResourceScopeKeyIsExact(t *testing.T) {
 	p1, p2, u1, u2 := "a:b", "a", "c", "b:c"

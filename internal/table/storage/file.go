@@ -9,7 +9,7 @@ type StorageFile struct {
 	CreatedBy                 string  `gorm:"size:64;not null;uniqueIndex:uk_storage_request,priority:3"`
 	RequestKey                string  `gorm:"size:64;not null;uniqueIndex:uk_storage_request,priority:4"`
 	ProjectID                 *string `gorm:"size:64"`
-	UserID                    *string `gorm:"size:64"`
+	OwnerUserID               *string `gorm:"column:user_id;size:64"`
 	RequestHash               string  `gorm:"size:64;not null"`
 	BackendID                 string  `gorm:"size:128;not null;uniqueIndex:uk_storage_location,priority:1"`
 	Bucket                    string  `gorm:"size:63;not null;uniqueIndex:uk_storage_location,priority:2"`

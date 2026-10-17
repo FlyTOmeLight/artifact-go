@@ -302,7 +302,7 @@ func (s *Service) apply(
 	deadline := started.Add(120 * time.Second)
 	attemptCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
-	target := storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID, UserID: i.ResourceUserID}
+	target := storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID, OwnerUserID: i.ResourceUserID}
 	ids := []string{}
 	for _, f := range p.files {
 		if f.ReferenceID == "" {
@@ -730,7 +730,7 @@ func (s *Service) finish(
 		}
 	}
 	release := version.ReferencePlan{
-		Scope: storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID, UserID: i.ResourceUserID},
+		Scope: storage.Scope{TenantID: i.TenantID, ProjectID: i.ProjectID, OwnerUserID: i.ResourceUserID},
 	}
 	for _, f := range p.removed {
 		release.References = append(

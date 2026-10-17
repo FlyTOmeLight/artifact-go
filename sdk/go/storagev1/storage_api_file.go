@@ -36,7 +36,9 @@ type CompleteFilesRequest []string
 
 // FileResponse exposes metadata without physical locations or credentials.
 type FileResponse struct {
-	UserID           *string       `json:"userID"`
+	// OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.
+	OwnerUserID *string `json:"ownerUserID"`
+
 	CreatedBy        string        `json:"createdBy"`
 	FileID           string        `json:"fileID"`
 	State            FileState     `json:"state"`

@@ -111,13 +111,13 @@ func (s *Service) Create(c *core.Context, req *api.CreateArtifactRequest) (*api.
 		return nil, false, err
 	}
 	row := table.Artifact{
-		ID:        uuid.NewString(),
-		TenantID:  identity.TenantID,
-		ProjectID: identity.ProjectID,
-		UserID:    identity.ResourceUserID,
-		ScopeKey:  identity.Key(),
-		Type:      req.Type,
-		Name:      name,
+		ID:          uuid.NewString(),
+		TenantID:    identity.TenantID,
+		ProjectID:   identity.ProjectID,
+		OwnerUserID: identity.ResourceUserID,
+		ScopeKey:    identity.Key(),
+		Type:        req.Type,
+		Name:        name,
 		VersionScheme: string(
 			req.VersionScheme,
 		),
@@ -333,7 +333,7 @@ func Response(row table.Artifact) api.ArtifactResponse {
 		ID:             row.ID,
 		TenantID:       row.TenantID,
 		ProjectID:      row.ProjectID,
-		UserID:         row.UserID,
+		OwnerUserID:    row.OwnerUserID,
 		Type:           row.Type,
 		Name:           row.Name,
 		ArtifactURI:    reference.ArtifactURI(row.TenantID, row.ProjectID, row.Type, row.ID),

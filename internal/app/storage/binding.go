@@ -39,7 +39,11 @@ func bindingError(err error) error {
 }
 
 func bindingIdentity(target Scope) scope.Identity {
-	return scope.Identity{TenantID: target.TenantID, ProjectID: target.ProjectID, ResourceUserID: target.UserID}
+	return scope.Identity{
+		TenantID:       target.TenantID,
+		ProjectID:      target.ProjectID,
+		ResourceUserID: target.OwnerUserID,
+	}
 }
 
 func bindingFiles(tx *db.DB, target Scope, ids []string) (map[string]table.StorageFile, error) {

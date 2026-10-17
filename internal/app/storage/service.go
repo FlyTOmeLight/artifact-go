@@ -97,7 +97,7 @@ func response(row table.StorageFile) *api.FileResponse {
 	}
 	return &api.FileResponse{
 		FileID:           row.ID,
-		UserID:           row.UserID,
+		OwnerUserID:      row.OwnerUserID,
 		CreatedBy:        row.CreatedBy,
 		State:            api.FileState(row.State),
 		ExpectedSize:     row.ExpectedSize,
@@ -212,7 +212,7 @@ func (s *Service) RegisterFile(c *core.Context, req api.RegisterFileItem) (*api.
 		ID:           id,
 		TenantID:     i.TenantID,
 		ProjectID:    i.ProjectID,
-		UserID:       i.ResourceUserID,
+		OwnerUserID:  i.ResourceUserID,
 		ScopeKey:     i.Key(),
 		CreatedBy:    i.UserID,
 		RequestKey:   req.RequestKey,

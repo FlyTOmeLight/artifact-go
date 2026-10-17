@@ -6,7 +6,7 @@
 
 ## 1. 资源归属
 
-集合和文件分别新增可空 `UserID/user_id`，与实际操作者 `CreatedBy/created_by` 分开。创建后归属固定，不新增转移或分享流程。
+集合和文件分别新增可空 `OwnerUserID/ownerUserID`（Go 结构与公开 JSON 字段；数据库列保持 `user_id`，GORM 显式 `column:user_id`）。请求的 UserID 表示当前实际操作者，资源的 CreatedBy/createdBy 固定记录创建者，均与 OwnerUserID 分开。本次重命名继续映射原 user_id 列，无需额外数据迁移；从未支持用户归属的旧版本升级时，仍需新增该可空列。创建后归属固定，不新增转移或分享流程。
 
 | tenant_id | project_id | user_id | 精确资源范围 |
 | --- | --- | --- | --- |
@@ -29,7 +29,7 @@
 
 `artifactv1.RequestIdentity` 与 `storagev1.RequestIdentity` 新增 `ResourceUserID *string`，SDK 将非 nil 值写入 `X-Resource-User-ID`。nil 不发送 Header；不会自动使用实际操作者。字段在放入 context 时复制，不能被调用方之后修改。
 
-资源范围只从上述可信接入路径取得，不在创建正文或列表查询中另设第二套 userID 选择参数。集合/文件响应新增 `userID`，共享响应显式为 null。文件响应同时返回独立的 createdBy。创建正文原有可选 projectID 只作与可信上下文一致性断言。
+资源范围只从上述可信接入路径取得，不在创建正文或列表查询中另设第二套 userID 选择参数。集合/文件响应新增 `ownerUserID`，共享响应显式为 null。文件响应同时返回独立的 createdBy。创建正文原有可选 projectID 只作与可信上下文一致性断言。
 
 `service.RequestIdentity.UserID` 继续表示实际操作者；新增 `ResourceUserID *string` 表示经过授权的资源归属。IdentityResolver 验证调用者对所选完整范围的权限后返回两者。请求 Header 仅表达选择，本身不授予权限。中间件与写前复验均检查请求选择与 resolver 返回的 ResourceUserID 一致；旧 resolver 忽略个人范围选择时返回 403 ScopeMismatch，不能静默降为共享。
 
@@ -49,7 +49,7 @@
 
 版本、草稿、alias、retention 继承父集合，不重复保存可变归属。版本发布与草稿回执先验证父集合范围；同一共享集合的不同操作者仍有各自的发布键空间。
 
-文件单独保存 user_id；读取、确认、删除、grant 使用同一 scope_key。文件发布/草稿引用要求文件和集合归属一致。ReferencePlan 的 Scope 保存可空 userID，Bind、Metadata、Release、Statuses 和后台释放均携带原固定范围；历史计划缺失 userID 按共享解释。URI 已包含固定集合 ID，不改格式，Resolve 仍验证完整范围。
+文件单独保存 user_id；读取、确认、删除、grant 使用同一 scope_key。文件发布/草稿引用要求文件和集合归属一致。ReferencePlan 的 Scope（`storage.Scope` 类型）Go 结构使用 `OwnerUserID` 字段，但持久 JSON 键保留 `userID`，确保旧版本个人计划在后台释放时仍能正确识别归属；Bind、Metadata、Release、Statuses 和后台释放均携带原固定范围；历史计划缺失 userID 按共享解释。URI 已包含固定集合 ID，不改格式，Resolve 仍验证完整范围。
 
 ## 4. 集合幂等创建契约
 

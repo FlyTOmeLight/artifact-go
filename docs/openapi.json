@@ -2675,6 +2675,10 @@
                 "name": {
                     "type": "string"
                 },
+                "ownerUserID": {
+                    "description": "OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.",
+                    "type": "string"
+                },
                 "projectID": {
                     "type": "string"
                 },
@@ -2691,9 +2695,6 @@
                     "type": "string"
                 },
                 "updatedAt": {
-                    "type": "string"
-                },
-                "userID": {
                     "type": "string"
                 },
                 "versionScheme": {
@@ -3413,13 +3414,14 @@
                 "fileID": {
                     "type": "string"
                 },
+                "ownerUserID": {
+                    "description": "OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.",
+                    "type": "string"
+                },
                 "size": {
                     "type": "integer"
                 },
                 "state": {
-                    "type": "string"
-                },
-                "userID": {
                     "type": "string"
                 }
             }
@@ -3509,13 +3511,14 @@
                 "fileID": {
                     "type": "string"
                 },
+                "ownerUserID": {
+                    "description": "OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.",
+                    "type": "string"
+                },
                 "size": {
                     "type": "integer"
                 },
                 "state": {
-                    "type": "string"
-                },
-                "userID": {
                     "type": "string"
                 }
             }
@@ -3638,6 +3641,10 @@
                 "fileID": {
                     "type": "string"
                 },
+                "ownerUserID": {
+                    "description": "OwnerUserID is nil for tenant/project shared resources; CreatedBy records the creator.",
+                    "type": "string"
+                },
                 "requestKey": {
                     "type": "string"
                 },
@@ -3645,9 +3652,6 @@
                     "type": "integer"
                 },
                 "state": {
-                    "type": "string"
-                },
-                "userID": {
                     "type": "string"
                 }
             }

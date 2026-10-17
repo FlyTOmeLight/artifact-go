@@ -10,7 +10,9 @@ import (
 type Scope struct {
 	TenantID  string  `json:"tenantID"`
 	ProjectID *string `json:"projectID"`
-	UserID    *string `json:"userID"`
+
+	// Keep the persisted plan key stable so recovery retains personal ownership.
+	OwnerUserID *string `json:"userID"`
 }
 
 type Reference struct {
