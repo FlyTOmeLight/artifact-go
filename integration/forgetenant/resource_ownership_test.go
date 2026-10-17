@@ -23,9 +23,11 @@ func TestResourceUserSelection(t *testing.T) {
 	r.Header.Set("X-Resource-User-ID", "other-user")
 	_, err = client.Resolve(r)
 	expectError(t, err, 403, "ScopeAccessDenied")
-	r.Header.Set("X-Resource-User-ID", "")
-	_, err = client.Resolve(r)
-	expectError(t, err, 400, "InvalidScope")
+	for _, value := range []string{"", " ", "\t", "\n", " user", "user ", "user\t", "\u00a0", "\u00a0user"} {
+		r.Header.Set("X-Resource-User-ID", value)
+		_, err = client.Resolve(r)
+		expectError(t, err, 400, "InvalidScope")
+	}
 	r.Header.Set("X-Resource-User-ID", "user")
 	r.Header.Add("X-Resource-User-ID", "user")
 	_, err = client.Resolve(r)

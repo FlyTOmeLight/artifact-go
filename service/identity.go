@@ -88,15 +88,17 @@ func tenantServiceMiddleware(verify TenantServiceVerifier) core.HandlerFunc {
 }
 
 // resolveResourceIdentity refuses scope selections ignored by an older resolver.
+// A malformed resource-user header is classified before the resolver runs, so a
+// blank or padded value stays InvalidScope when the resolver would deny it.
 func resolveResourceIdentity(resolve IdentityResolver, r *http.Request) (RequestIdentity, error) {
-	identity, err := resolve(r)
-	if err != nil {
-		return RequestIdentity{}, err
-	}
 	values, present := r.Header[http.CanonicalHeaderKey("X-Resource-User-ID")]
 	if present &&
 		(len(values) != 1 || strings.TrimSpace(values[0]) == "" || strings.TrimSpace(values[0]) != values[0]) {
 		return RequestIdentity{}, serrors.NewError(400, "InvalidScope", "resource user must be a nonempty ID")
+	}
+	identity, err := resolve(r)
+	if err != nil {
+		return RequestIdentity{}, err
 	}
 	selected := r.Header.Get("X-Resource-User-ID")
 	if (selected == "") != (identity.ResourceUserID == nil) ||

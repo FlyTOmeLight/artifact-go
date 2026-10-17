@@ -152,7 +152,7 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	}
 	var resourceUser *string
 	if values, present := r.Header[http.CanonicalHeaderKey("X-Resource-User-ID")]; present {
-		if len(values) != 1 || values[0] == "" {
+		if len(values) != 1 || strings.TrimSpace(values[0]) == "" || strings.TrimSpace(values[0]) != values[0] {
 			return empty, serrors.NewError(400, "InvalidScope", "resource user must be a nonempty ID")
 		}
 		if values[0] != result.UserID {
