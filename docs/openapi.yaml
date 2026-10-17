@@ -51,6 +51,8 @@ definitions:
         type: string
       updatedAt:
         type: string
+      userID:
+        type: string
       versionScheme:
         type: string
     type: object
@@ -64,6 +66,9 @@ definitions:
         maxLength: 128
         type: string
       projectID:
+        maxLength: 64
+        type: string
+      requestKey:
         maxLength: 64
         type: string
       type:
@@ -520,6 +525,8 @@ definitions:
         type: string
       createdAt:
         type: string
+      createdBy:
+        type: string
       declaredChecksum:
         $ref: '#/definitions/storagev1.FileChecksum'
       error:
@@ -533,6 +540,8 @@ definitions:
       size:
         type: integer
       state:
+        type: string
+      userID:
         type: string
     type: object
   storagev1.CreateGrantRequest:
@@ -581,6 +590,8 @@ definitions:
         type: string
       createdAt:
         type: string
+      createdBy:
+        type: string
       declaredChecksum:
         $ref: '#/definitions/storagev1.FileChecksum'
       expectedSize:
@@ -592,6 +603,8 @@ definitions:
       size:
         type: integer
       state:
+        type: string
+      userID:
         type: string
     type: object
   storagev1.GrantCredentials:
@@ -659,6 +672,8 @@ definitions:
         type: string
       createdAt:
         type: string
+      createdBy:
+        type: string
       declaredChecksum:
         $ref: '#/definitions/storagev1.FileChecksum'
       error:
@@ -674,6 +689,8 @@ definitions:
       size:
         type: integer
       state:
+        type: string
+      userID:
         type: string
     type: object
   storagev1.TenantBucketResponse:
@@ -704,6 +721,11 @@ paths:
       - description: Project scope selection; omit for tenant scope
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Request correlation ID
         in: header
@@ -768,6 +790,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Request correlation ID
         in: header
         name: X-Request-ID
@@ -781,6 +808,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: Successful replay with current collection state
+          schema:
+            $ref: '#/definitions/artifactv1.ArtifactResponse'
         "201":
           description: Created
           schema:
@@ -809,6 +840,10 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/artifactv1.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/artifactv1.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create an artifact collection
@@ -825,6 +860,11 @@ paths:
       - description: Project scope selection; omit for tenant scope
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Request correlation ID
         in: header
@@ -874,6 +914,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -938,6 +983,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -993,6 +1043,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1062,6 +1117,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Request correlation ID
         in: header
         name: X-Request-ID
@@ -1110,6 +1170,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1167,6 +1232,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1243,6 +1313,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1302,6 +1377,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1352,6 +1432,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1431,6 +1516,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1495,6 +1585,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1539,6 +1634,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1600,6 +1700,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Request correlation ID
         in: header
@@ -1681,6 +1786,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1738,6 +1848,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1789,6 +1904,11 @@ paths:
       - description: Project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Artifact ID
         in: path
@@ -1860,6 +1980,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Artifact ID
         in: path
         name: artifactID
@@ -1930,6 +2055,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: Request correlation ID
         in: header
         name: X-Request-ID
@@ -1990,6 +2120,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: File declarations
         in: body
         name: request
@@ -2039,6 +2174,11 @@ paths:
       - description: Trusted project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: File ID
         in: path
@@ -2092,6 +2232,11 @@ paths:
         in: header
         name: X-Project-ID
         type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
+        type: string
       - description: File ID
         in: path
         name: fileID
@@ -2134,6 +2279,11 @@ paths:
       - description: Trusted project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: File IDs
         in: body
@@ -2186,6 +2336,11 @@ paths:
       - description: Trusted project scope selection
         in: header
         name: X-Project-ID
+        type: string
+      - description: Resource owner selection; omit for shared scope, verified by
+          resolver
+        in: header
+        name: X-Resource-User-ID
         type: string
       - description: Files and requested S3 actions
         in: body

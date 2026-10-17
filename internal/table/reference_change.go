@@ -11,7 +11,7 @@ type ReferenceChange struct {
 	RequestKey      string    `gorm:"size:64;primaryKey"`
 	RequestHash     string    `gorm:"size:64;not null"`
 	TenantID        string    `gorm:"size:64;not null"`
-	ScopeKey        string    `gorm:"size:80;not null"`
+	ScopeKey        string    `gorm:"size:160;not null"`
 	AttemptID       string    `gorm:"size:36;not null"`
 	State           string    `gorm:"size:16;not null;index:idx_reference_change_deadline,priority:1"`
 	Deadline        time.Time `gorm:"index:idx_reference_change_deadline,priority:2"`

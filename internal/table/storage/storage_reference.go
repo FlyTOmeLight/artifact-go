@@ -8,7 +8,7 @@ type StorageReference struct {
 	ReferenceID             string `gorm:"size:36;primaryKey"`
 	FileID                  string `gorm:"size:36;not null;index:idx_storage_reference_active,priority:1"`
 	TenantID                string `gorm:"size:64;not null"`
-	ScopeKey                string `gorm:"size:80;not null"`
+	ScopeKey                string `gorm:"size:160;not null"`
 	State                   string `gorm:"size:16;not null;index:idx_storage_reference_active,priority:2"`
 	ReleaseRequiresDeletion bool   `gorm:"not null"`
 	CreatedAt               time.Time

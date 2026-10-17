@@ -5,10 +5,11 @@ import "time"
 type StorageFile struct {
 	ID                        string  `gorm:"size:36;primaryKey"`
 	TenantID                  string  `gorm:"size:64;not null;uniqueIndex:uk_storage_request,priority:1"`
-	ScopeKey                  string  `gorm:"size:80;not null;uniqueIndex:uk_storage_request,priority:2"`
+	ScopeKey                  string  `gorm:"size:160;not null;uniqueIndex:uk_storage_request,priority:2"`
 	CreatedBy                 string  `gorm:"size:64;not null;uniqueIndex:uk_storage_request,priority:3"`
 	RequestKey                string  `gorm:"size:64;not null;uniqueIndex:uk_storage_request,priority:4"`
 	ProjectID                 *string `gorm:"size:64"`
+	UserID                    *string `gorm:"size:64"`
 	RequestHash               string  `gorm:"size:64;not null"`
 	BackendID                 string  `gorm:"size:128;not null;uniqueIndex:uk_storage_location,priority:1"`
 	Bucket                    string  `gorm:"size:63;not null;uniqueIndex:uk_storage_location,priority:2"`

@@ -34,6 +34,7 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Param artifactID path string true "Artifact ID"
 // @Accept json
@@ -190,6 +191,7 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param number query string false "Exact published version number"
 // @Param cursor query string false "Query-bound cursor"
@@ -222,6 +224,7 @@ func (c *Controller) List(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
 // @Produce json
@@ -297,6 +300,7 @@ func (c *Controller) decodeManagement(ctx *core.Context, target any, field strin
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
 // @Accept json
@@ -326,6 +330,7 @@ func (c *Controller) UpdateAnnotations(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
 // @Accept json
@@ -355,6 +360,7 @@ func (c *Controller) UpdateProtection(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
 // @Produce json

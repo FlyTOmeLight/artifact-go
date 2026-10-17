@@ -97,15 +97,16 @@ func NewStorage(ctx context.Context, database *db.DB, options StorageOptions) (*
 			backend,
 			grantConfig,
 			func(r *http.Request) (scope.Identity, error) {
-				identity, err := options.IdentityResolver(r)
+				identity, err := resolveResourceIdentity(options.IdentityResolver, r)
 				if err != nil {
 					return scope.Identity{}, err
 				}
 				return scope.Identity{
-					UserID:    identity.UserID,
-					TenantID:  identity.TenantID,
-					ProjectID: identity.ProjectID,
-					Active:    identity.OwnershipState == OwnershipActive,
+					UserID:         identity.UserID,
+					TenantID:       identity.TenantID,
+					ProjectID:      identity.ProjectID,
+					ResourceUserID: identity.ResourceUserID,
+					Active:         identity.OwnershipState == OwnershipActive,
 				}, nil
 			},
 		)

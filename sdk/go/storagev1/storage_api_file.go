@@ -36,6 +36,8 @@ type CompleteFilesRequest []string
 
 // FileResponse exposes metadata without physical locations or credentials.
 type FileResponse struct {
+	UserID           *string       `json:"userID"`
+	CreatedBy        string        `json:"createdBy"`
 	FileID           string        `json:"fileID"`
 	State            FileState     `json:"state"`
 	ExpectedSize     int64         `json:"expectedSize"`

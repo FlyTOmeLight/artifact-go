@@ -66,6 +66,7 @@ func resultError(err error) *api.FileError {
 // @Produce json
 // @Param X-Tenant-ID header string true "Trusted tenant scope selection"
 // @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param request body []storagev1.RegisterFileItem true "File declarations"
 // @Success 200 {array} storagev1.RegisterFileResult
 // @Failure 400,401,403,413 {object} errors.Error
@@ -133,6 +134,7 @@ func (c *FileController) Register(ctx *core.Context) {
 // @Produce json
 // @Param X-Tenant-ID header string true "Trusted tenant scope selection"
 // @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param request body []string true "File IDs"
 // @Success 200 {array} storagev1.CompleteFileResult
 // @Failure 400,401,403,413 {object} errors.Error
@@ -184,6 +186,7 @@ func (c *FileController) Complete(ctx *core.Context) {
 // @Produce json
 // @Param X-Tenant-ID header string true "Trusted tenant scope selection"
 // @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param fileID path string true "File ID"
 // @Success 200 {object} storagev1.FileResponse
 // @Failure 401,403,404 {object} errors.Error
@@ -204,6 +207,7 @@ func (c *FileController) Get(ctx *core.Context) {
 // @Produce json
 // @Param X-Tenant-ID header string true "Trusted tenant scope selection"
 // @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param fileID path string true "File ID"
 // @Success 202 {object} storagev1.FileResponse
 // @Success 200 {object} storagev1.FileResponse

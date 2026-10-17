@@ -136,6 +136,7 @@ func (c *GrantController) request(ctx *core.Context) (api.CreateGrantRequest, er
 // @Produce json
 // @Param X-Tenant-ID header string true "Trusted tenant scope selection"
 // @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param request body storagev1.CreateGrantRequest true "Files and requested S3 actions"
 // @Success 200 {object} storagev1.GrantResponse
 // @Failure 400,401,403,404,409,413,503 {object} errors.Error

@@ -3,6 +3,7 @@ package artifactv1
 import "time"
 
 type CreateArtifactRequest struct {
+	RequestKey     string        `json:"requestKey,omitempty" binding:"omitempty,max=64"`
 	Type           string        `json:"type" binding:"required,min=1,max=64" example:"model"`
 	Name           string        `json:"name" binding:"required,max=128" example:"demo"`
 	ProjectID      *string       `json:"projectID,omitempty" binding:"omitempty,max=64"`
@@ -24,6 +25,7 @@ type ArtifactResponse struct {
 	ID              string            `json:"id"`
 	TenantID        string            `json:"tenantID"`
 	ProjectID       *string           `json:"projectID"`
+	UserID          *string           `json:"userID"`
 	Type            string            `json:"type"`
 	Name            string            `json:"name"`
 	ArtifactURI     string            `json:"artifactUri"`

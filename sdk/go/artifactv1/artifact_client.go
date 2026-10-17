@@ -62,6 +62,9 @@ func (c *Client) request(ctx context.Context) *resty.Request {
 		if identity.ProjectID != nil && *identity.ProjectID != "" {
 			req.SetHeader("X-Project-ID", *identity.ProjectID)
 		}
+		if identity.ResourceUserID != nil {
+			req.SetHeader("X-Resource-User-ID", *identity.ResourceUserID)
+		}
 		if identity.RequestID != "" {
 			req.SetHeader("X-Request-ID", identity.RequestID)
 		}
