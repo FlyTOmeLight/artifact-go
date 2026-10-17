@@ -10,6 +10,7 @@ import (
 type Scope struct {
 	TenantID  string  `json:"tenantID"`
 	ProjectID *string `json:"projectID"`
+	UserID    *string `json:"userID"`
 }
 
 type Reference struct {

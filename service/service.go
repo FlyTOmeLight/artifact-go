@@ -156,15 +156,16 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 	}
 	worker.WithReferences(references)
 	recheck := func(r *http.Request) (scope.Identity, error) {
-		i, err := options.IdentityResolver(r)
+		i, err := resolveResourceIdentity(options.IdentityResolver, r)
 		if err != nil {
 			return scope.Identity{}, err
 		}
 		return scope.Identity{
-			UserID:    i.UserID,
-			TenantID:  i.TenantID,
-			ProjectID: i.ProjectID,
-			Active:    i.OwnershipState == OwnershipActive,
+			UserID:         i.UserID,
+			TenantID:       i.TenantID,
+			ProjectID:      i.ProjectID,
+			ResourceUserID: i.ResourceUserID,
+			Active:         i.OwnershipState == OwnershipActive,
 		}, nil
 	}
 	return &Service{

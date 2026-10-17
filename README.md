@@ -6,7 +6,7 @@
 
 | 方法 | 路径 | 结果 |
 | --- | --- | --- |
-| POST | `/v1/artifacts` | 创建集合，201 |
+| POST | `/v1/artifacts` | 创建集合，首次201、有键成功重放200 |
 | GET | `/v1/artifacts` | 当前精确作用域内按ID升序分页，200 |
 | GET | `/v1/artifacts/{artifactID}` | 读取集合，200 |
 | POST | `/v1/artifacts/{artifactID}/archive` | 幂等归档，200；保留名称和编号身份 |
@@ -35,7 +35,7 @@
 
 
 
-每个集合固定类型、租户/可选项目和编号规则。同一scope+type内名称规范化为小写且唯一；租户级NULL项目仍有真实数据库唯一约束。归档不删除集合。retentionPolicy返回当前规则与修订；未配置时返回默认禁用规则、revision=0。
+每个集合固定类型、租户/可选项目/可选归属用户和编号规则。归属 userID 与实际操作者 createdBy 分开；空 project/user 分别表示租户级/共享，不是通配符。同一完整 scope+type 内名称规范化为小写且唯一；NULL 归属仍有真实数据库唯一约束。归档不删除集合。retentionPolicy返回当前规则与修订；未配置时返回默认禁用规则、revision=0。
 
 ## 构建与检查
 
@@ -57,7 +57,7 @@ make check
 
 MySQL连接必须使用`parseTime=true&loc=UTC`，保证不同机器读取同一DATETIME时得到同一时间。独立装配未设置`DB.DSNParams`时采用`charset=utf8mb4&parseTime=true&loc=UTC&interpolateParams=true`；显式参数不满足要求时拒绝启动。组合应用需自行配置借用连接；`service.New`在迁移前查询一个固定DATETIME验证实际解码，不会更改或关闭调用方的连接。
 
-resolver必须认证本次请求，核对选择的精确租户/项目，并返回`UserID`、`TenantID`、可选`ProjectID`及`OwnershipActive`或`OwnershipDeleted`。租户ID为1–64位ASCII字母、数字、`_`或`-`，保留大小写；与现有租户系统生成的`t_`加24位十六进制ID兼容。SDK里的scope Header只表达选择，不是身份依据。已删除scope需要接入方仍明确授权历史访问；本服务允许读取、归档及现有版本管理，拒绝新建。
+resolver必须认证本次请求，核对选择的完整资源范围，并返回实际操作者`UserID`、`TenantID`、可选`ProjectID`、可选归属`ResourceUserID`及`OwnershipActive`或`OwnershipDeleted`。`X-Resource-User-ID`只选择资源归属；省略表示共享，显式空值拒绝。SDK通过`RequestIdentity.ResourceUserID`传递。内置Forge接入允许共享范围和已认证用户自己的个人范围。租户ID为1–64位ASCII字母、数字、`_`或`-`，保留大小写；与现有租户系统生成的`t_`加24位十六进制ID兼容。SDK里的scope Header只表达选择，不是身份依据。已删除scope需要接入方仍明确授权历史访问；本服务允许读取、归档及现有版本管理，拒绝新建。
 
 Forge 用户可使用新增 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。此实现已部署本机 OrbStack，配置和重部署入口见 [Forge 部署](deploy/forge/README.md)。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
 
@@ -88,7 +88,8 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 
 ## 设计与进度
 
-- [服务消费者接入设计：集合幂等创建与可信服务身份（待实施）](docs/service-consumer-design-20261016.md)
+- [可选用户归属与集合幂等创建契约](docs/service-consumer-design-20261016.md)
+- [Issue #2 本地实现与双库验收](docs/user-ownership-acceptance-20261018.md)
 - [父Spec #1](https://github.com/FlyTOmeLight/artifact-go/issues/1)
 - [实施顺序](docs/implementation-plan-20261015.md)
 - [代码结构及职责](docs/codebase-design-20261014.md)
@@ -97,6 +98,8 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 - [T01交付记录](docs/t01-acceptance-20261015.md)
 
 本机 JuiceFS 部署与探针资料保留实际验收依据；当前文件业务链路已接入。T01–T11 与 T12 本地验收记录见实施计划，真实 Forge 身份已完成本机验收，生产接入仍待验收。
+
+集合创建可提供 `requestKey`（至多64字符）；同完整资源范围、实际操作者和键按规范参数重放，首次201、重放200，合法异参409。集合行保存成功事实，归档后重放返回当前状态及retention。无键保持非幂等行为，提交结果不明时不能通过NULL键恢复。旧数据新增user_id为空，保持共享归属；先迁移服务端再启用新客户端，不移除选择Header或请求键降级重试。
 
 ## T02 发布边界
 

@@ -49,12 +49,14 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Accept json
 // @Produce json
 // @Param request body artifactv1.CreateArtifactRequest true "Collection"
 // @Success 201 {object} artifactv1.ArtifactResponse
-// @Failure 400,401,403,409,413,500 {object} artifactv1.ErrorResponse
+// @Success 200 {object} artifactv1.ArtifactResponse "Successful replay with current collection state"
+// @Failure 400,401,403,409,413,500,503 {object} artifactv1.ErrorResponse
 // @Router /v1/artifacts [post]
 func (c *Controller) Create(ctx *core.Context) {
 	var req *api.CreateArtifactRequest
@@ -91,13 +93,17 @@ func (c *Controller) Create(ctx *core.Context) {
 		serrors.AbortWithError(ctx, invalid(err.Error()))
 		return
 	}
-	out, err := c.service.Create(ctx, req)
+	out, created, err := c.service.Create(ctx, req)
 	if err != nil {
 		serrors.AbortWithError(ctx, err)
 		return
 	}
 	ctx.Set("artifact.response.artifactID", out.ID)
-	ctx.JSON(http.StatusCreated, out)
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+	ctx.JSON(status, out)
 }
 
 // List godoc
@@ -106,6 +112,7 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json
 // @Param type query string false "Artifact type"
@@ -139,6 +146,7 @@ func (c *Controller) List(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json
 // @Param artifactID path string true "Artifact ID"
@@ -165,6 +173,7 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json
 // @Param artifactID path string true "Artifact ID"

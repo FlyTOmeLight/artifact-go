@@ -29,6 +29,7 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Accept json
 // @Produce json
@@ -111,6 +112,7 @@ func (c *Controller) Update(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Produce json
 // @Success 200 {object} artifactv1.PreviewRetentionResponse

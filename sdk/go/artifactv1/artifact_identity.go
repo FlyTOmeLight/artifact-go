@@ -3,13 +3,14 @@ package artifactv1
 import "context"
 
 type RequestIdentity struct {
-	BearerToken string
-	Session     string
-	CSRFToken   string
-	Origin      string
-	TenantID    string
-	ProjectID   *string
-	RequestID   string
+	BearerToken    string
+	Session        string
+	CSRFToken      string
+	Origin         string
+	TenantID       string
+	ProjectID      *string
+	ResourceUserID *string
+	RequestID      string
 }
 
 type identityKey struct{}
@@ -21,6 +22,10 @@ func WithRequestIdentity(ctx context.Context, identity RequestIdentity) context.
 	if identity.ProjectID != nil {
 		project := *identity.ProjectID
 		identity.ProjectID = &project
+	}
+	if identity.ResourceUserID != nil {
+		user := *identity.ResourceUserID
+		identity.ResourceUserID = &user
 	}
 	return context.WithValue(ctx, identityKey{}, identity)
 }

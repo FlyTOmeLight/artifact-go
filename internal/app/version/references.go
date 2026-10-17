@@ -188,7 +188,10 @@ func (s *Service) prepareReferences(
 	deadline := started.Add(120 * time.Second)
 	prepareCtx, stopPrepare := context.WithDeadline(ctx, deadline)
 	defer stopPrepare()
-	target := storage.Scope{TenantID: identity.TenantID, ProjectID: identity.ProjectID}
+	target := storage.Scope{
+		TenantID: identity.TenantID, ProjectID: identity.ProjectID,
+		UserID: identity.ResourceUserID,
+	}
 	var metadata []storage.FileMetadata
 	for start := 0; start < len(files); start += 1000 {
 		end := min(start+1000, len(files))
@@ -667,6 +670,7 @@ func (s *Service) persistSourceConflict(
 					Scope: storage.Scope{
 						TenantID:  identity.TenantID,
 						ProjectID: identity.ProjectID,
+						UserID:    identity.ResourceUserID,
 					},
 				},
 			)

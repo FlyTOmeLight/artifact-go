@@ -123,6 +123,7 @@ func abort(ctx *core.Context, err error) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Accept json
 // @Produce json
@@ -155,6 +156,7 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param cursor query string false "Query-bound cursor"
 // @Param limit query int false "Page size" default(50) minimum(1) maximum(200)
@@ -186,6 +188,7 @@ func (c *Controller) List(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"
 // @Produce json
@@ -212,6 +215,7 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"
 // @Accept json
@@ -242,6 +246,7 @@ func (c *Controller) Update(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"
 // @Param expectedRevision query int true "Current draft revision" minimum(1)

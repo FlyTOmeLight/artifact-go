@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -13,10 +14,11 @@ import (
 )
 
 type Identity struct {
-	UserID    string
-	TenantID  string
-	ProjectID *string
-	Active    bool
+	UserID         string
+	TenantID       string
+	ProjectID      *string
+	ResourceUserID *string
+	Active         bool
 }
 
 type identityKey struct{}
@@ -28,13 +30,18 @@ func Set(c *core.Context, identity Identity) {
 		project := *identity.ProjectID
 		identity.ProjectID = &project
 	}
+	if identity.ResourceUserID != nil {
+		user := *identity.ResourceUserID
+		identity.ResourceUserID = &user
+	}
 	c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), identityKey{}, identity))
 }
 
 func From(c *core.Context) (Identity, error) {
 	identity, ok := c.Request.Context().Value(identityKey{}).(Identity)
 	if !ok || !validID(identity.UserID) || !tenantIDPattern.MatchString(identity.TenantID) ||
-		(identity.ProjectID != nil && !validID(*identity.ProjectID)) {
+		(identity.ProjectID != nil && !validID(*identity.ProjectID)) ||
+		(identity.ResourceUserID != nil && !validID(*identity.ResourceUserID)) {
 		return Identity{}, serrors.NewError(
 			http.StatusUnauthorized,
 			"Unauthorized",
@@ -50,6 +57,14 @@ func validID(value string) bool {
 }
 
 func (i Identity) Key() string {
+	if i.ResourceUserID != nil {
+		project := ""
+		if i.ProjectID != nil {
+			project = *i.ProjectID
+		}
+		// The byte length prevents delimiter-containing IDs from colliding.
+		return "user:" + strconv.Itoa(len(project)) + ":" + project + ":" + *i.ResourceUserID
+	}
 	if i.ProjectID == nil {
 		return "tenant"
 	}

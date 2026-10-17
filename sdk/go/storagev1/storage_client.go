@@ -47,13 +47,14 @@ func (c *Client) Close() error { return c.transport.Close() }
 // Management calls need only the service credential; file calls use a verified user scope.
 // The receiving service verifies the credential; the SDK does not authenticate it.
 type RequestIdentity struct {
-	BearerToken string
-	Session     string
-	CSRFToken   string
-	Origin      string
-	TenantID    string
-	ProjectID   string
-	RequestID   string
+	BearerToken    string
+	Session        string
+	CSRFToken      string
+	Origin         string
+	TenantID       string
+	ProjectID      string
+	ResourceUserID *string
+	RequestID      string
 }
 
 type identityKey struct{}
@@ -61,6 +62,10 @@ type identityKey struct{}
 // WithRequestIdentity snapshots credentials for one call without changing the client.
 // Session, CSRFToken and Origin carry the original call's browser credentials.
 func WithRequestIdentity(ctx context.Context, identity RequestIdentity) context.Context {
+	if identity.ResourceUserID != nil {
+		user := *identity.ResourceUserID
+		identity.ResourceUserID = &user
+	}
 	return context.WithValue(ctx, identityKey{}, identity)
 }
 
@@ -84,6 +89,9 @@ func (c *Client) request(ctx context.Context) *resty.Request {
 		}
 		if identity.ProjectID != "" {
 			req.SetHeader("X-Project-ID", identity.ProjectID)
+		}
+		if identity.ResourceUserID != nil {
+			req.SetHeader("X-Resource-User-ID", *identity.ResourceUserID)
 		}
 		if identity.RequestID != "" {
 			req.SetHeader("X-Request-ID", identity.RequestID)

@@ -150,7 +150,23 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 		(projectID != nil && *projectID != *resolvedProject) {
 		return empty, unavailable()
 	}
+	var resourceUser *string
+	if values, present := r.Header[http.CanonicalHeaderKey("X-Resource-User-ID")]; present {
+		if len(values) != 1 || values[0] == "" {
+			return empty, serrors.NewError(400, "InvalidScope", "resource user must be a nonempty ID")
+		}
+		if values[0] != result.UserID {
+			return empty, serrors.NewError(
+				403,
+				"ScopeAccessDenied",
+				"private resources belong to another user",
+			)
+		}
+		selected := values[0]
+		resourceUser = &selected
+	}
 	return service.RequestIdentity{
+		ResourceUserID: resourceUser,
 		UserID:         result.UserID,
 		TenantID:       tenantID,
 		ProjectID:      resolvedProject,

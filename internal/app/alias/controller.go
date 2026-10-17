@@ -29,6 +29,7 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name; latest is read-only"
 // @Accept json
@@ -95,6 +96,7 @@ func (c *Controller) Put(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name"
 // @Param includeDeleted query bool false "Include alias tombstone" default(false)
@@ -122,6 +124,7 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant scope selection"
 // @Param X-Project-ID header string false "Project scope selection"
+// @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name; latest is read-only"
 // @Param expectedRevision query int true "Current alias revision" minimum(0)
