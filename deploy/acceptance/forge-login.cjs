@@ -124,8 +124,8 @@ const base = config.publicURL;
     }
     const scope = JSON.parse(fs.readFileSync(scopeFile));
     const checks = ["real Casdoor login and callback"];
-    const tenantHeader = { "X-Tenant-ID": scope.tenantID };
-    const projectHeader = { ...tenantHeader, "X-Project-ID": scope.projectID };
+    const tenantHeader = { "x-forge-tenant-id": scope.tenantID };
+    const projectHeader = { ...tenantHeader, "x-forge-project-id": scope.projectID };
     const objects = [];
     for (const [name, headers] of [
       ["tenant", tenantHeader],
@@ -222,7 +222,7 @@ const base = config.publicURL;
       assert(nonmember);
     }
     await request("GET", "/artifact/v1/artifacts", undefined, 403, {
-      "X-Tenant-ID": nonmember.id,
+      "x-forge-tenant-id": nonmember.id,
     });
     checks.push("operator without membership denied 403");
     const files = await request(

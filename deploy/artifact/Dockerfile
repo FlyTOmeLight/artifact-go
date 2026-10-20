@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# Same toolchain as go.mod; digest verified 2026-10-15.
-FROM golang:1.27.0-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452 AS build
+# Same toolchain as go.mod; digest verified 2026-10-20.
+FROM golang:1.27.1-bookworm@sha256:8d48e12ec56735e9358640898b9d9b9fcca110612ed8a5567438c0a1baa24e66 AS build
 WORKDIR /src
 ENV GOWORK=off CGO_ENABLED=0
 COPY go.mod go.sum ./

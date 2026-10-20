@@ -116,7 +116,7 @@ func tenantBucketRequest(ctx context.Context, server *httptest.Server, token, bo
 		return 0, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Tenant-ID", tenantA)
+	req.Header.Set("x-forge-tenant-id", tenantA)
 	req.Header.Set("X-User-ID", "admin")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

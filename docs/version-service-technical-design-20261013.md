@@ -855,7 +855,7 @@ Go SDK 方法均接收 context.Context，JSON 契约使用 json.RawMessage 或�
 
 #### 请求身份与 SDK 构造
 
-SDK 每次请求从 context 读取 RequestIdentity，把 BearerToken 写入 Authorization: Bearer，把 TenantID、ProjectID 分别写入 X-Tenant-ID、X-Project-ID；ProjectID 为空时省略对应 Header，表示租户直属范围。RequestID 可选，写入 X-Request-ID。Client 不保存请求身份，也不在并发请求时修改共享默认 Header。
+SDK 每次请求从 context 读取 RequestIdentity，把 BearerToken 写入 Authorization: Bearer，把 TenantID、ProjectID 分别写入 server-go `constants.HeaderTenantID` / `HeaderProjectID`（wire 名 `x-forge-tenant-id`、`x-forge-project-id`）；ProjectID 为空时省略对应 Header，表示租户直属范围。RequestID 可选，写入 X-Request-ID。Client 不保存请求身份，也不在并发请求时修改共享默认 Header。
 
 这些 Header 是作用域选择输入，不是身份或成员关系证明。接入方 Middleware 验证 Bearer 身份并确认作用域来源可信，再建立服务端 context；受信网关注入作用域时须清除外部同名 Header。artifact-go 仍不检查业务操作权限。
 

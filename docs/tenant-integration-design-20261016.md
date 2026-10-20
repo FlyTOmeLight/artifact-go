@@ -41,6 +41,7 @@
 
 ```json
 {
+  "principal": {"id": "u_example", "name": "示例用户", "email": "user@example.test", "operator": false},
   "user_id": "u_example",
   "tenant_id": "t_example",
   "project_id": null,
@@ -48,19 +49,21 @@
 }
 ```
 
+`principal` 是 tenant 已发布响应的组成部分；接入层要求它存在，且 `principal.id` 与 `user_id` 一致，否则按身份服务不可用处理。
+
 省略或 null 的 project_id 只选择租户直属范围；空字符串拒绝。非空必须核对 `projects.id` 与 `projects.tenant_id`，不能依赖 GitLab 是否同步成功或从 grants 过滤清单推定项目存在。tenant_id 必填；method 必须显式传入，不能默认 GET。
 
 服务执行顺序：校验输入 → 现有 CheckSession → tenant 状态 → active 租户成员资格 → 可选精确项目归属 → 返回可信结果。不查询项目代码权限，不采用 operator 绕过准入。数据库故障与业务不存在分开。
 
-建议沿用既有错误包与 wire envelope：用户会话无效为 401 AUTH_REQUIRED，CSRF 失败为 403 CSRF_REJECTED，scope 输入无效为 422 INVALID_SCOPE，不存在或不匹配为 404 SCOPE_NOT_FOUND，租户 suspended 为 403 SCOPE_INACTIVE；无有效成员资格为 403 SCOPE_ACCESS_DENIED。服务 Bearer 错误仍是 SERVICE_AUTH_REQUIRED。数据库/网络失败不能伪造 active/deleted。
+建议沿用既有错误包与 wire envelope：用户会话无效为 401 AUTH_REQUIRED，CSRF 失败为 403 CSRF_REJECTED，scope 输入无效为 422 INVALID_SCOPE，缺少必需 scope 为 400 SCOPE_REQUIRED，不存在或不匹配为 404 SCOPE_NOT_FOUND，租户 suspended 为 403 SCOPE_INACTIVE；无有效成员资格为 403 SCOPE_ACCESS_DENIED。服务 Bearer 错误仍是 SERVICE_AUTH_REQUIRED。数据库/网络失败不能伪造 active/deleted。接入层把 INVALID_SCOPE、SCOPE_REQUIRED 和其他明确的用户拒绝映射为对应 4xx，其余故障统一为 503 TenantIdentityUnavailable。
 
 ## 逐请求凭据与装配
 
-两个 Go SDK 的 RequestIdentity 增加 Session、CSRFToken、Origin；每次请求分别写 `forge_session` Cookie、`X-CSRF-Token` 与 `Origin`，与已有 TenantID/ProjectID 选择头一起传递。BearerToken 保留给现有自定义身份接入及服务管理调用，不解释为 Forge session。共享 Client 不保存用户凭据；并发请求之间不串 session、scope 或 Origin。
+两个 Go SDK 的 RequestIdentity 增加 Session、CSRFToken、Origin；每次请求分别写 `forge_session` Cookie、`X-CSRF-Token` 与 `Origin`，与`x-forge-tenant-id` / `x-forge-project-id` 范围选择头一起传递。BearerToken 保留给现有自定义身份接入及服务管理调用，不解释为 Forge session。共享 Client 不保存用户凭据；并发请求之间不串 session、scope 或 Origin。
 
 Forge 适配器归接入模块：读取 Cookie 和原始请求属性 → 调 tenant scope/resolve → 校验响应用户、scope 与请求精确一致 → 转为 RequestIdentity。服务凭据错误、传输失败、响应缺失或 scope 不匹配返回身份服务不可用；仅明确的用户认证拒绝返回用户身份错误。不缓存成功身份跨请求，也不把上游 403 转成 deleted。
 
-`cmd/forge-server` 可选 Forge 入口调用现有 `BuildWithIdentity` / `BuildWithVerifiers`；不在 artifact 领域 service 中硬编码 tenant HTTP 调用。tenantv1 已增加 ResolveScope，但当前工作区未发布且最低 Go 版本 1.27.1 高于 artifact 1.27.0。因此 integration/forgetenant 对这个单一受认证 HTTP/JSON 接口进行传输适配，不引入未发布 Go 模块或永久 replace，也不提高核心服务工具链要求。它调用真实 tenant 身份服务，不另造登录体系。
+`cmd/forge-server` 可选 Forge 入口调用现有 `BuildWithIdentity` / `BuildWithVerifiers`；不在 artifact 领域 service 中硬编码 tenant HTTP 调用。integration/forgetenant 保留现有 `IdentityResolver` 边界，通过受认证 HTTP/JSON 请求调用 scope/resolve；范围头统一使用 server-go `constants.HeaderTenantID` / `HeaderProjectID`（`x-forge-tenant-id` / `x-forge-project-id`），并校验响应中的 Principal、用户与精确 scope。当前不引入 tenant 根模块，以免把其服务端依赖带入 artifact。artifact 使用 server-go v0.13.0 提供的范围头常量，最低 Go 版本为 1.27.1。它调用真实 tenant 身份服务，不另造登录体系。
 
 浏览器在现有同源代理新增独立 `/artifact/`、`/storage/` 路径并去掉前缀转发到两域公开 HTTP 路由；tenant 原有 `/api/`、`/auth/`、`/internal/` 行为保持。原 Cookie、Origin 和 CSRF 原样转发，内部 scope/resolve 不公开。配置变更属于部署接入，不扩大 Cookie Domain，也不启用跨域凭据回退。
 

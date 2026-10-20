@@ -27,8 +27,8 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Summary Replace the retention policy using its current revision
 // @Tags retention
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Accept json
@@ -110,8 +110,8 @@ func (c *Controller) Update(ctx *core.Context) {
 // @Summary Preview retention candidates without changing resources
 // @Tags retention
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Produce json

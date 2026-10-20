@@ -11,7 +11,7 @@ docker build -f deploy/artifact/Dockerfile -t artifact-go:local .
 docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:local -h
 ```
 
-构建固定 Go 1.27.0 官方镜像 digest，与 go.mod 一致，不修改依赖。若构建网络无法访问默认 Go 模块代理，可用 `--build-arg GOPROXY=<可访问的公开模块代理>`；它只改变模块获取地址，不改变锁定版本或跳过校验。运行层为非 root 的 scratch，包含 CA、时区、三条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
+构建固定 Go 1.27.1 官方镜像 digest，与 go.mod 一致。若构建网络无法访问默认 Go 模块代理，可用 `--build-arg GOPROXY=<可访问的公开模块代理>`；它只改变模块获取地址，不改变锁定版本或跳过校验。运行层为非 root 的 scratch，包含 CA、时区、三条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
 
 接入方在自己的入口中把已经验证的身份函数交给以下公开装配函数，随后按相同 Dockerfile 构建入口；本仓库不假定租户系统的 HTTP 鉴权协议。
 

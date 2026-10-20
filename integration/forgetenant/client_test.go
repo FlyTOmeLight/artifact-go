@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FlyTOmeLight/server-go/constants"
 	serrors "github.com/FlyTOmeLight/server-go/errors"
 
 	"github.com/FlyTOmeLight/artifact-go/integration/forgetenant"
@@ -38,9 +39,9 @@ func request(t *testing.T, method, project string) *http.Request {
 	t.Helper()
 	r := httptest.NewRequest(method, "http://artifact.test/v1/artifacts", nil).WithContext(t.Context())
 	r.AddCookie(&http.Cookie{Name: "forge_session", Value: "user-session"})
-	r.Header.Set("X-Tenant-ID", "tenant")
+	r.Header.Set(constants.HeaderTenantID, "tenant")
 	if project != "" {
-		r.Header.Set("X-Project-ID", project)
+		r.Header.Set(constants.HeaderProjectID, project)
 	}
 	r.Header.Set("Origin", "https://forge.test")
 	r.Header.Set("X-CSRF-Token", "csrf-value")
@@ -107,7 +108,7 @@ func TestResolveWireAndExactActiveScope(t *testing.T) {
 				)
 				w.Header().Set("Content-Type", "application/json")
 				_ = json.NewEncoder(w).
-					Encode(map[string]any{"user_id": "user", "tenant_id": "tenant", "project_id": gotProject, "ownership_state": "active"})
+					Encode(map[string]any{"principal": map[string]any{"id": "user", "operator": true}, "user_id": "user", "tenant_id": "tenant", "project_id": gotProject, "ownership_state": "active"})
 			}, 0)
 			var resolve service.IdentityResolver = client.Resolve
 			for range 2 {
@@ -142,12 +143,16 @@ func TestResolveRejectsUnverifiedResponses(t *testing.T) {
 		{name: "unknown-error", body: `{"error":{"code":"UNKNOWN","message":"upstream-sensitive-detail"}}`, status: 403, wantStatus: 503, code: "TenantIdentityUnavailable"},
 		{name: "failure", body: `upstream-sensitive-detail`, status: 503, wantStatus: 503, code: "TenantIdentityUnavailable"},
 		{name: "malformed", body: `{"user_id":`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
-		{name: "deleted", body: `{"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"deleted"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
-		{name: "tenant-mismatch", body: `{"user_id":"user","tenant_id":"foreign","project_id":null,"ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
-		{name: "project-mismatch", body: `{"user_id":"user","tenant_id":"tenant","project_id":"foreign","ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "missing principal", body: `{"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "mismatched principal", body: `{"principal":{"id":"other"},"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "deleted", body: `{"principal":{"id":"user"},"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"deleted"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "tenant-mismatch", body: `{"principal":{"id":"user"},"user_id":"user","tenant_id":"foreign","project_id":null,"ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "invalid scope", body: `{"error":{"code":"INVALID_SCOPE"}}`, status: 422, wantStatus: 422, code: "INVALID_SCOPE"},
+		{name: "scope required", body: `{"error":{"code":"SCOPE_REQUIRED"}}`, status: 400, wantStatus: 400, code: "SCOPE_REQUIRED"},
+		{name: "project-mismatch", body: `{"principal":{"id":"user"},"user_id":"user","tenant_id":"tenant","project_id":"foreign","ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
 		{name: "missing-user", body: `{"tenant_id":"tenant","project_id":null,"ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
 		{name: "missing-project-field", body: `{"user_id":"user","tenant_id":"tenant","ownership_state":"active"}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
-		{name: "trailing-json", body: `{"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"} {}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
+		{name: "trailing-json", body: `{"principal":{"id":"user","operator":true},"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"} {}`, status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
 		{name: "oversized", body: strings.Repeat("x", (64<<10)+1), status: 200, wantStatus: 503, code: "TenantIdentityUnavailable"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -178,9 +183,18 @@ func TestResolveMissingCredentialsAndSelection(t *testing.T) {
 	_, err := client.Resolve(r)
 	expectError(t, err, 401, "AUTH_REQUIRED")
 	r = request(t, http.MethodGet, "")
-	r.Header.Del("X-Tenant-ID")
+	r.Header.Del(constants.HeaderTenantID)
 	_, err = client.Resolve(r)
-	expectError(t, err, 400, "InvalidScope")
+	expectError(t, err, 400, "INVALID_SCOPE")
+	r = request(t, http.MethodGet, "")
+	r.Header.Add(constants.HeaderTenantID, "other")
+	_, err = client.Resolve(r)
+	expectError(t, err, 400, "INVALID_SCOPE")
+	r = request(t, http.MethodGet, "")
+	r.Header.Set("X-Tenant-ID", "tenant")
+	r.Header.Del(constants.HeaderTenantID)
+	_, err = client.Resolve(r)
+	expectError(t, err, 400, "INVALID_SCOPE")
 	if calls.Load() != 0 {
 		t.Fatal("invalid local request reached Tenant")
 	}
@@ -195,7 +209,10 @@ func TestResolvePreservesGetContextAndNetworkFailures(t *testing.T) {
 		if body.Method != "GET" || body.Origin != "" || body.CSRF != "" {
 			t.Error("GET metadata was synthesized")
 		}
-		fmt.Fprint(w, `{"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`)
+		fmt.Fprint(
+			w,
+			`{"principal":{"id":"user","operator":true},"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`,
+		)
 	}, 0)
 	r := request(t, http.MethodGet, "")
 	r.Header.Del("Origin")

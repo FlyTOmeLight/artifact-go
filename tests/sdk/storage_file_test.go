@@ -15,7 +15,7 @@ import (
 func TestStorageFileBatchWireContract(t *testing.T) {
 	var phase int
 	client := storageClientFor(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Tenant-ID") != "tenant" || r.Header.Get("X-Project-ID") != "project" ||
+		if r.Header.Get("x-forge-tenant-id") != "tenant" || r.Header.Get("x-forge-project-id") != "project" ||
 			r.Header.Get("Authorization") != "Bearer actor" {
 			t.Error("missing per-request identity")
 		}
@@ -140,7 +140,8 @@ func TestStorageFileResultFailureOmitsMetadata(t *testing.T) {
 func TestStorageFileScopesArePerRequest(t *testing.T) {
 	client := storageClientFor(t, func(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if r.Header.Get("X-Tenant-ID") != "tenant-"+token || r.Header.Get("X-Project-ID") != "project-"+token {
+		if r.Header.Get("x-forge-tenant-id") != "tenant-"+token ||
+			r.Header.Get("x-forge-project-id") != "project-"+token {
 			t.Error("scope leaked between concurrent requests")
 		}
 		w.Header().Set("Content-Type", "application/json")

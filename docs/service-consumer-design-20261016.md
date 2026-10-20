@@ -23,8 +23,8 @@
 
 | Header | 规则 |
 | --- | --- |
-| X-Tenant-ID | 选择租户；接入边界仍需验证 |
-| X-Project-ID | 选择项目；省略表示租户级 |
+| `x-forge-tenant-id` | 选择租户；接入边界仍需验证 |
+| `x-forge-project-id` | 选择项目；省略表示租户级 |
 | X-Resource-User-ID | 选择可选资源归属用户；省略表示共享；显式空、空白和多个值拒绝 |
 
 `artifactv1.RequestIdentity` 与 `storagev1.RequestIdentity` 新增 `ResourceUserID *string`，SDK 将非 nil 值写入 `X-Resource-User-ID`。nil 不发送 Header；不会自动使用实际操作者。字段在放入 context 时复制，不能被调用方之后修改。

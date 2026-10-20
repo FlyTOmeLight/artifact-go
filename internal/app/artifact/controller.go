@@ -47,8 +47,8 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Summary Create an artifact collection
 // @Tags artifacts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection; omit for tenant scope"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Accept json
@@ -110,8 +110,8 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Summary List collections in the exact request scope
 // @Tags artifacts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection; omit for tenant scope"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json
@@ -144,8 +144,8 @@ func (c *Controller) List(ctx *core.Context) {
 // @Summary Read a collection, including archived collections
 // @Tags artifacts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection; omit for tenant scope"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json
@@ -171,8 +171,8 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Summary Archive a collection while retaining its identity
 // @Tags artifacts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection; omit for tenant scope"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection; omit for tenant scope"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Produce json

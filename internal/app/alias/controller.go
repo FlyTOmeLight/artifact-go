@@ -27,8 +27,8 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Summary Conditionally create, move or restore an alias
 // @Tags aliases
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name; latest is read-only"
@@ -94,8 +94,8 @@ func (c *Controller) Put(ctx *core.Context) {
 // @Summary Read an alias or the current latest ready version
 // @Tags aliases
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name"
@@ -122,8 +122,8 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Summary Conditionally delete an alias and retain its revision tombstone
 // @Tags aliases
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param name path string true "Alias name; latest is read-only"

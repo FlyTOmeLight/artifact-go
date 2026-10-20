@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/FlyTOmeLight/server-go/constants"
 	serrors "github.com/FlyTOmeLight/server-go/errors"
 
 	"github.com/FlyTOmeLight/artifact-go/service"
@@ -80,10 +81,19 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	if err != nil || cookie.Value == "" {
 		return empty, serrors.NewError(http.StatusUnauthorized, "AUTH_REQUIRED", "请先登录")
 	}
-	tenantID, project := r.Header.Get("X-Tenant-ID"), r.Header.Get("X-Project-ID")
+	tenantValues := r.Header.Values(constants.HeaderTenantID)
+	projectValues := r.Header.Values(constants.HeaderProjectID)
+	if len(tenantValues) != 1 || len(projectValues) > 1 {
+		return empty, invalidScope()
+	}
+	tenantID := tenantValues[0]
+	project := ""
+	if len(projectValues) == 1 {
+		project = projectValues[0]
+	}
 	if strings.TrimSpace(tenantID) == "" || tenantID != strings.TrimSpace(tenantID) ||
-		project != strings.TrimSpace(project) {
-		return empty, serrors.NewError(http.StatusBadRequest, "InvalidScope", "请选择有效的租户或项目范围")
+		(len(projectValues) == 1 && project == "") || project != strings.TrimSpace(project) {
+		return empty, invalidScope()
 	}
 	var projectID *string
 	if project != "" {
@@ -128,6 +138,12 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 		return empty, responseError(response.StatusCode, raw)
 	}
 	var result struct {
+		Principal *struct {
+			ID       string `json:"id"`
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+			Operator bool   `json:"operator"`
+		} `json:"principal"`
 		UserID         string          `json:"user_id"`
 		TenantID       string          `json:"tenant_id"`
 		ProjectID      json.RawMessage `json:"project_id"`
@@ -144,6 +160,7 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	}
 	var resolvedProject *string
 	if len(result.ProjectID) == 0 || json.Unmarshal(result.ProjectID, &resolvedProject) != nil ||
+		result.Principal == nil || result.Principal.ID == "" || result.Principal.ID != result.UserID ||
 		strings.TrimSpace(result.UserID) == "" || result.UserID != strings.TrimSpace(result.UserID) ||
 		result.TenantID != tenantID || result.OwnershipState != "active" ||
 		(projectID == nil) != (resolvedProject == nil) ||
@@ -178,6 +195,10 @@ func unavailable() error {
 	return serrors.NewError(http.StatusServiceUnavailable, "TenantIdentityUnavailable", "租户身份校验暂不可用")
 }
 
+func invalidScope() error {
+	return serrors.NewError(http.StatusBadRequest, "INVALID_SCOPE", "请选择有效的租户或项目范围")
+}
+
 func responseError(status int, raw []byte) error {
 	var result struct {
 		Error struct {
@@ -188,6 +209,11 @@ func responseError(status int, raw []byte) error {
 		return unavailable()
 	}
 	switch {
+	case (status == http.StatusBadRequest || status == http.StatusUnprocessableEntity) &&
+		result.Error.Code == "INVALID_SCOPE":
+		return serrors.NewError(status, "INVALID_SCOPE", "请选择有效的租户或项目范围")
+	case status == http.StatusBadRequest && result.Error.Code == "SCOPE_REQUIRED":
+		return serrors.NewError(status, "SCOPE_REQUIRED", "请选择完整的租户和项目范围")
 	case status == http.StatusUnauthorized && result.Error.Code == "AUTH_REQUIRED":
 		return serrors.NewError(status, "AUTH_REQUIRED", "请先登录")
 	case status == http.StatusForbidden && result.Error.Code == "CSRF_REJECTED":
