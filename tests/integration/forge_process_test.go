@@ -118,7 +118,7 @@ func TestForgeProcessStartRequestSignalExit(t *testing.T) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				_ = json.NewEncoder(w).
-					Encode(map[string]any{"user_id": "user", "tenant_id": "tenant", "project_id": "project", "ownership_state": "active"})
+					Encode(map[string]any{"principal": map[string]any{"id": "user"}, "user_id": "user", "tenant_id": "tenant", "project_id": "project", "ownership_state": "active"})
 			}))
 			defer tenant.Close()
 			listener, err := net.Listen("tcp", "127.0.0.1:0")

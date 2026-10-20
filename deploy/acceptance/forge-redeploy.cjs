@@ -28,8 +28,8 @@ async function main() {
   );
   check(scope, "ConfiguredProjectScopeRequired");
   const headers = {
-    "X-Tenant-ID": scope.TenantID,
-    "X-Project-ID": scope.ProjectID,
+    "x-forge-tenant-id": scope.TenantID,
+    "x-forge-project-id": scope.ProjectID,
   };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-transfer-"));
   fs.chmodSync(dir, 0o700);

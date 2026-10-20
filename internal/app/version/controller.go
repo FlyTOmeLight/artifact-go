@@ -32,8 +32,8 @@ func (c *Controller) RegisterRoutes(group *core.RouterGroup) {
 // @Summary Publish JSON and files directly or from a specified draft revision
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param X-Request-ID header string false "Request correlation ID"
 // @Param artifactID path string true "Artifact ID"
@@ -189,8 +189,8 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Summary List ready versions in descending sequence order
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param number query string false "Exact published version number"
@@ -222,8 +222,8 @@ func (c *Controller) List(ctx *core.Context) {
 // @Summary Read a ready version
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
@@ -298,8 +298,8 @@ func (c *Controller) decodeManagement(ctx *core.Context, target any, field strin
 // @Summary Replace version annotations with revision checking
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
@@ -328,8 +328,8 @@ func (c *Controller) UpdateAnnotations(ctx *core.Context) {
 // @Summary Set version protection with revision checking
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"
@@ -358,8 +358,8 @@ func (c *Controller) UpdateProtection(ctx *core.Context) {
 // @Summary Delete a version and retain its identity tombstone
 // @Tags versions
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param versionID path string true "Version ID"

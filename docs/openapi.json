@@ -26,14 +26,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection; omit for tenant scope",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -127,14 +127,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection; omit for tenant scope",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -235,14 +235,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection; omit for tenant scope",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -317,14 +317,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -408,14 +408,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -516,14 +516,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -619,14 +619,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection; omit for tenant scope",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -701,14 +701,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -793,14 +793,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -914,14 +914,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -998,14 +998,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1115,14 +1115,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1218,14 +1218,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1321,14 +1321,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1397,14 +1397,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1495,14 +1495,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1622,14 +1622,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1703,14 +1703,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1801,14 +1801,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -1914,14 +1914,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2027,14 +2027,14 @@
                     {
                         "type": "string",
                         "description": "Tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2126,14 +2126,14 @@
                     {
                         "type": "string",
                         "description": "Trusted tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Trusted project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2213,14 +2213,14 @@
                     {
                         "type": "string",
                         "description": "Trusted tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Trusted project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2297,14 +2297,14 @@
                     {
                         "type": "string",
                         "description": "Trusted tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Trusted project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2365,14 +2365,14 @@
                     {
                         "type": "string",
                         "description": "Trusted tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Trusted project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {
@@ -2456,14 +2456,14 @@
                     {
                         "type": "string",
                         "description": "Trusted tenant scope selection",
-                        "name": "X-Tenant-ID",
+                        "name": "x-forge-tenant-id",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Trusted project scope selection",
-                        "name": "X-Project-ID",
+                        "name": "x-forge-project-id",
                         "in": "header"
                     },
                     {

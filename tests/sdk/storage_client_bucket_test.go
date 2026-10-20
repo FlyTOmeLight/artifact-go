@@ -78,8 +78,8 @@ func TestStorageCredentialsArePerRequest(t *testing.T) {
 		if requestID != "" {
 			wantAuth = "Bearer " + requestID
 		}
-		if r.Header.Get("Authorization") != wantAuth || r.Header.Get("X-Tenant-ID") != "" ||
-			r.Header.Get("X-Project-ID") != "" {
+		if r.Header.Get("Authorization") != wantAuth || r.Header.Get("x-forge-tenant-id") != "" ||
+			r.Header.Get("x-forge-project-id") != "" {
 			t.Error("request credential contamination")
 		}
 		w.Header().Set("Content-Type", "application/json")

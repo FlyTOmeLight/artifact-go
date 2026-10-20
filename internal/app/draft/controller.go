@@ -121,8 +121,8 @@ func abort(ctx *core.Context, err error) {
 // @Summary Create an independent JSON and file draft or replay its creation
 // @Tags drafts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Accept json
@@ -154,8 +154,8 @@ func (c *Controller) Create(ctx *core.Context) {
 // @Summary List draft summaries by ascending ID
 // @Tags drafts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param cursor query string false "Query-bound cursor"
@@ -186,8 +186,8 @@ func (c *Controller) List(ctx *core.Context) {
 // @Summary Read one consistent draft snapshot
 // @Tags drafts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"
@@ -213,8 +213,8 @@ func (c *Controller) Get(ctx *core.Context) {
 // @Summary Replace a draft snapshot with revision checking and replay receipt
 // @Tags drafts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"
@@ -244,8 +244,8 @@ func (c *Controller) Update(ctx *core.Context) {
 // @Summary Delete a draft while retaining successful request identities
 // @Tags drafts
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant scope selection"
-// @Param X-Project-ID header string false "Project scope selection"
+// @Param x-forge-tenant-id header string true "Tenant scope selection"
+// @Param x-forge-project-id header string false "Project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param artifactID path string true "Artifact ID"
 // @Param draftID path string true "Draft ID"

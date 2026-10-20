@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/FlyTOmeLight/server-go/constants"
 	"github.com/FlyTOmeLight/server-go/sdk"
 	"resty.dev/v3"
 )
@@ -85,10 +86,10 @@ func (c *Client) request(ctx context.Context) *resty.Request {
 			req.SetAuthToken(identity.BearerToken)
 		}
 		if identity.TenantID != "" {
-			req.SetHeader("X-Tenant-ID", identity.TenantID)
+			req.SetHeader(constants.HeaderTenantID, identity.TenantID)
 		}
 		if identity.ProjectID != "" {
-			req.SetHeader("X-Project-ID", identity.ProjectID)
+			req.SetHeader(constants.HeaderProjectID, identity.ProjectID)
 		}
 		if identity.ResourceUserID != nil {
 			req.SetHeader("X-Resource-User-ID", *identity.ResourceUserID)

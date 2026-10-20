@@ -715,12 +715,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection; omit for tenant scope
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -783,12 +783,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection; omit for tenant scope
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -854,12 +854,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection; omit for tenant scope
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -908,12 +908,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -976,12 +976,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1037,12 +1037,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1110,12 +1110,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection; omit for tenant scope
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1164,12 +1164,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1226,12 +1226,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1306,12 +1306,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1370,12 +1370,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1426,12 +1426,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1509,12 +1509,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1578,12 +1578,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1628,12 +1628,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1694,12 +1694,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1779,12 +1779,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1841,12 +1841,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1898,12 +1898,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -1973,12 +1973,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2048,12 +2048,12 @@ paths:
       parameters:
       - description: Tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2113,12 +2113,12 @@ paths:
       parameters:
       - description: Trusted tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Trusted project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2168,12 +2168,12 @@ paths:
       parameters:
       - description: Trusted tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Trusted project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2225,12 +2225,12 @@ paths:
       parameters:
       - description: Trusted tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Trusted project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2273,12 +2273,12 @@ paths:
       parameters:
       - description: Trusted tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Trusted project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver
@@ -2330,12 +2330,12 @@ paths:
       parameters:
       - description: Trusted tenant scope selection
         in: header
-        name: X-Tenant-ID
+        name: x-forge-tenant-id
         required: true
         type: string
       - description: Trusted project scope selection
         in: header
-        name: X-Project-ID
+        name: x-forge-project-id
         type: string
       - description: Resource owner selection; omit for shared scope, verified by
           resolver

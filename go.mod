@@ -1,9 +1,9 @@
 module github.com/FlyTOmeLight/artifact-go
 
-go 1.27.0
+go 1.27.1
 
 require (
-	github.com/FlyTOmeLight/server-go v0.10.0
+	github.com/FlyTOmeLight/server-go v0.13.0
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1

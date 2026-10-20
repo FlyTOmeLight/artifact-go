@@ -134,12 +134,12 @@ func TestHTTPFailuresPreserveStatusAndDoNotRetry(t *testing.T) {
 
 func TestRequestIdentityIsolation(t *testing.T) {
 	client := clientFor(t, func(w http.ResponseWriter, r *http.Request) {
-		tenant := r.Header.Get("X-Tenant-ID")
+		tenant := r.Header.Get("x-forge-tenant-id")
 		if tenant == "" {
-			if r.Header.Get("Authorization") != "" || r.Header.Get("X-Project-ID") != "" {
+			if r.Header.Get("Authorization") != "" || r.Header.Get("x-forge-project-id") != "" {
 				t.Error("identity leaked into anonymous request")
 			}
-		} else if r.Header.Get("Authorization") != "Bearer "+tenant || r.Header.Get("X-Request-ID") != tenant || r.Header.Get("X-Project-ID") != tenant {
+		} else if r.Header.Get("Authorization") != "Bearer "+tenant || r.Header.Get("X-Request-ID") != tenant || r.Header.Get("x-forge-project-id") != tenant {
 			t.Errorf("mixed identity for %s", tenant)
 		}
 		w.Header().Set("Content-Type", "application/json")

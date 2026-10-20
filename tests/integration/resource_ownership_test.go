@@ -42,7 +42,7 @@ func resourceResolver(r *http.Request) (service.RequestIdentity, error) {
 	if !active {
 		i.OwnershipState = service.OwnershipDeleted
 	}
-	if p := r.Header.Get("X-Project-ID"); p != "" {
+	if p := r.Header.Get("x-forge-project-id"); p != "" {
 		if p != projectA {
 			return i, serr.NewError(403, "ScopeAccessDenied", "unknown project")
 		}
@@ -90,7 +90,7 @@ func resourceRaw(
 	req.Header.Set("Authorization", "Bearer "+s.actor)
 	req.Header.Set("Content-Type", "application/json")
 	if s.project != nil {
-		req.Header.Set("X-Project-ID", *s.project)
+		req.Header.Set("x-forge-project-id", *s.project)
 	}
 	if s.user != nil {
 		req.Header.Set("X-Resource-User-ID", *s.user)

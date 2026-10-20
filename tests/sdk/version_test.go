@@ -17,7 +17,7 @@ func TestVersionOperations(t *testing.T) {
 	var calls int
 	client := clientFor(t, func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.Header.Get("Authorization") != "Bearer token" || r.Header.Get("X-Tenant-ID") != "tenant" {
+		if r.Header.Get("Authorization") != "Bearer token" || r.Header.Get("x-forge-tenant-id") != "tenant" {
 			t.Error("version request lost identity")
 		}
 		w.Header().Set("Content-Type", "application/json")

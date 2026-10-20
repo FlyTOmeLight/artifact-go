@@ -64,8 +64,8 @@ func resultError(err error) *api.FileError {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param X-Tenant-ID header string true "Trusted tenant scope selection"
-// @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param x-forge-tenant-id header string true "Trusted tenant scope selection"
+// @Param x-forge-project-id header string false "Trusted project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param request body []storagev1.RegisterFileItem true "File declarations"
 // @Success 200 {array} storagev1.RegisterFileResult
@@ -132,8 +132,8 @@ func (c *FileController) Register(ctx *core.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param X-Tenant-ID header string true "Trusted tenant scope selection"
-// @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param x-forge-tenant-id header string true "Trusted tenant scope selection"
+// @Param x-forge-project-id header string false "Trusted project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param request body []string true "File IDs"
 // @Success 200 {array} storagev1.CompleteFileResult
@@ -184,8 +184,8 @@ func (c *FileController) Complete(ctx *core.Context) {
 // @Tags storage
 // @Security BearerAuth
 // @Produce json
-// @Param X-Tenant-ID header string true "Trusted tenant scope selection"
-// @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param x-forge-tenant-id header string true "Trusted tenant scope selection"
+// @Param x-forge-project-id header string false "Trusted project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param fileID path string true "File ID"
 // @Success 200 {object} storagev1.FileResponse
@@ -205,8 +205,8 @@ func (c *FileController) Get(ctx *core.Context) {
 // @Tags storage
 // @Security BearerAuth
 // @Produce json
-// @Param X-Tenant-ID header string true "Trusted tenant scope selection"
-// @Param X-Project-ID header string false "Trusted project scope selection"
+// @Param x-forge-tenant-id header string true "Trusted tenant scope selection"
+// @Param x-forge-project-id header string false "Trusted project scope selection"
 // @Param X-Resource-User-ID header string false "Resource owner selection; omit for shared scope, verified by resolver"
 // @Param fileID path string true "File ID"
 // @Success 202 {object} storagev1.FileResponse

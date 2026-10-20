@@ -395,7 +395,7 @@ func TestArtifactHTTPAndSDK(t *testing.T) {
 						t.Fatal(err)
 					}
 					req.Header.Set("Content-Type", "application/json")
-					req.Header.Set("X-Tenant-ID", tenantA)
+					req.Header.Set("x-forge-tenant-id", tenantA)
 					if tc.token != "" {
 						req.Header.Set("Authorization", "Bearer "+tc.token)
 					}

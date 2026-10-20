@@ -20,8 +20,8 @@ func TestStorageGrantWireContract(t *testing.T) {
 					t.Errorf("route %s %s", r.Method, r.URL.Path)
 				}
 				if r.Header.Get("Authorization") != "Bearer actor" ||
-					r.Header.Get("X-Tenant-ID") != "tenant" ||
-					r.Header.Get("X-Project-ID") != "project" {
+					r.Header.Get("x-forge-tenant-id") != "tenant" ||
+					r.Header.Get("x-forge-project-id") != "project" {
 					t.Error("missing identity")
 				}
 				var body api.CreateGrantRequest

@@ -8,7 +8,10 @@ import (
 
 func TestResourceUserSelection(t *testing.T) {
 	client := newClient(t, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`)
+		fmt.Fprint(
+			w,
+			`{"principal":{"id":"user"},"user_id":"user","tenant_id":"tenant","project_id":null,"ownership_state":"active"}`,
+		)
 	}, 0)
 	r := request(t, http.MethodGet, "")
 	got, err := client.Resolve(r)
