@@ -26,6 +26,8 @@ jobs:
           test "$(git -C "$tool_dir" rev-parse HEAD)" = "9d389e31b15509ae9cbdff326499929f715db78f"
           (cd "$tool_dir" && go install ./cmd/gorgeous)
           go install github.com/swaggo/swag/cmd/swag@v1.8.4
+      - name: Warm Go build cache
+        run: go build ./...
       - run: make check
       - name: Verify module metadata
         run: |
