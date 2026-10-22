@@ -19,18 +19,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 45
-      {{- if .Values.initialization.enabled }}
+      {{- if and .Values.initialization.enabled (include "artifact.forgeEnabled" .) }}
       initContainers:
-        - name: migrate
-          image: {{ printf "%s:%s" .Values.image.repository (required "image.tag is required" .Values.image.tag) | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: [/usr/local/bin/artifact-migrate]
-          args: ["--config=/config/config.json", {{ printf "--timeout=%s" .Values.initialization.timeout | quote }}]
-          envFrom:
-            - secretRef: {name: {{ include "artifact.secret" . }}}
-          volumeMounts:
-            - {name: config, mountPath: /config, readOnly: true}
-        {{- if include "artifact.forgeEnabled" . }}
         - name: storage-iam
           image: {{ printf "%s:%s" .Values.initialization.storageImage.repository (required "initialization.storageImage.tag is required" .Values.initialization.storageImage.tag) | quote }}
           imagePullPolicy: {{ .Values.initialization.storageImage.pullPolicy }}
@@ -41,7 +31,6 @@ spec:
             - {{ printf "--timeout=%s" .Values.initialization.timeout | quote }}
           envFrom:
             - secretRef: {name: {{ include "artifact.secret" . }}}
-        {{- end }}
       {{- end }}
       containers:
         - name: api

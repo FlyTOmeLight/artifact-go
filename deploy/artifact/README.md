@@ -1,6 +1,6 @@
 # Artifact / storage 交付与运行
 
-本镜像提供通用服务、可选 Forge 服务、维护和数据库迁移四条二进制。Forge 入口已有 session 与 active 租户成员接入，需配置并部署配套的新 tenant scope 接口；本机部署已升级并完成真实登录和文件联调，重部署入口见 [Forge 本机部署](../forge/README.md)；生产身份接入另行验收。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
+本镜像提供通用服务、可选 Forge 服务和维护命令三条二进制。Forge 入口已有 session 与 active 租户成员接入，需配置并部署配套的新 tenant scope 接口；本机部署已升级并完成真实登录和文件联调，重部署入口见 [Forge 本机部署](../forge/README.md)；生产身份接入另行验收。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
 
 ## 构建及身份装配
 
@@ -11,7 +11,7 @@ docker build -f deploy/artifact/Dockerfile -t artifact-go:local .
 docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:local -h
 ```
 
-构建固定 Go 1.27.1 官方镜像 digest，与 go.mod 一致。若构建网络无法访问默认 Go 模块代理，可用 `--build-arg GOPROXY=<可访问的公开模块代理>`；它只改变模块获取地址，不改变锁定版本或跳过校验。运行层为非 root 的 scratch，包含 CA、时区、四条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
+构建固定 Go 1.27.1 官方镜像 digest，与 go.mod 一致。若构建网络无法访问默认 Go 模块代理，可用 `--build-arg GOPROXY=<可访问的公开模块代理>`；它只改变模块获取地址，不改变锁定版本或跳过校验。运行层为非 root 的 scratch，包含 CA、时区、三条静态二进制和无密钥的默认配置。专用 Dockerfile.dockerignore 只发送构建需要的源码及配置；不得将实际密钥写进 `conf/`。部署配置与凭据应在运行时只读挂载或通过部署密钥机制注入。自签 CA 需在构建或挂载时加入可信 CA 集合，不能关闭 TLS 校验。
 
 接入方在自己的入口中把已经验证的身份函数交给以下公开装配函数，随后按相同 Dockerfile 构建入口；本仓库不假定租户系统的 HTTP 鉴权协议。
 
@@ -19,7 +19,7 @@ docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:loc
 
 `IdentityResolver` 必须验证本次调用身份及精确租户/项目归属，返回可信 UserID、TenantID、可选 ProjectID、归属 active/deleted。历史读取和成功请求确认需要可信历史归属；查不到或拒绝访问不能自行转换成 deleted。`TenantServiceVerifier` 仅验证租户系统的 bucket 管理身份，与普通用户身份分开。
 
-配置字段的完整可运行语法以 [conf/server/config.toml](../../conf/server/config.toml) 为准。完整服务使用 DB/Version/Worker 和 StorageDB/Storage/StorageFiles/StorageWorker/StorageGrants，`StorageConsumerID` 指定持久引用归属。`AutoMigrate=false` 为默认值；首次建库和后续 schema 迁移使用镜像内 `/usr/local/bin/artifact-migrate --config <配置文件>`，显式迁移 Artifact 与 Storage 两个数据库。Helm chart 通过 migrate initContainer 执行该命令，业务进程保持 `AutoMigrate=false`。MySQL 使用 UTC 与 parseTime；连接池每域独立配置。
+配置字段的完整可运行语法以 [conf/server/config.toml](../../conf/server/config.toml) 为准。完整服务使用 DB/Version/Worker 和 StorageDB/Storage/StorageFiles/StorageWorker/StorageGrants，`StorageConsumerID` 指定持久引用归属。通用配置默认 `AutoMigrate=false`；Forge 部署将 `DB.AutoMigrate` 与 `StorageDB.AutoMigrate` 均设为 `true`，由服务启动时的 `service.New` 和 `service.NewStorage` 执行 GORM AutoMigrate，保留当前 schema 的外键约束。Artifact/Storage 不提供独立迁移命令，也不使用 migrate initContainer；`storage-iam` initContainer 继续负责 JuiceFS IAM 初始化。MySQL 使用 UTC 与 parseTime；连接池每域独立配置。
 
 ## Forge session 入口
 

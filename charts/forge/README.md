@@ -44,7 +44,7 @@ OrbStack 默认浏览器入口为 `http://127.0.0.1:8483`，S3 客户端入口�
 
 - Helm 生成一个保留的 seed Secret，派生数据库、内部管理和 STS 凭据。升级读取该 seed，不重新生成密码。
 - 内部 CA 与叶证书一组保存。升级复用它们；外部 CA 来自输入，不能用新内部 CA 替代。
-- Tenant 复用已有 migrate/bootstrap，并注册预生成服务 key。Artifact 用独立 migrate initContainer 建两个域的 schema，正常运行保持 `AutoMigrate=false`。
+- Tenant 复用已有 migrate/bootstrap，并注册预生成服务 key。Artifact 的 `DB.AutoMigrate` 与 `StorageDB.AutoMigrate` 均为 `true`，服务启动时通过现有 `service.New` 和 `service.NewStorage` 执行 GORM AutoMigrate，保留当前 schema 的外键约束。Artifact/Storage 不使用独立迁移命令或 migrate initContainer；`storage-iam` initContainer 继续负责 JuiceFS IAM 初始化。
 - JuiceFS 使用 Redis AOF 与对象目录所在的持久卷；只对空元数据库初始化，已有 metadata 不重置。
 - STS issuer 是普通 IAM 用户，具有明确基础 policy；root 只用于初始化和桶管理，不直接签发客户端 STS。
 - `forge-tenant-init` 子 chart 提供外部初始化普通 Job，执行 `/forge-init external-bootstrap`，预算为 300 秒。它读取镜像内 `conf/server/config.toml`，复用服务地址与 CA，`[Bootstrap]` 仅接收证书名、初始账号、邮箱和 PAT 到期日。namespace/release 由 Pod/Helm 注入，目录和资源名由程序约定。

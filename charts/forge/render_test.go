@@ -511,8 +511,8 @@ func assertWorkloadContract(t *testing.T, r rendered, release string) {
 	for _, c := range containers {
 		initNames[stringValue(c["name"])] = true
 	}
-	if !initNames["migrate"] || !initNames["storage-iam"] {
-		t.Errorf("artifact init path must include migrate and storage-iam")
+	if len(initNames) != 1 || !initNames["storage-iam"] {
+		t.Errorf("artifact init path must contain only storage-iam; schemas initialize in the service")
 	}
 	foundRuntime := false
 	for _, cm := range r.byKind["ConfigMap"] {
@@ -522,8 +522,11 @@ func assertWorkloadContract(t *testing.T, r rendered, release string) {
 		foundRuntime = true
 		config := parseJSON(t, stringValue(mapValue(cm["data"])["config.json"]))
 		for _, path := range [][]string{{"DB", "AutoMigrate"}, {"StorageDB", "AutoMigrate"}} {
-			if valueAt(config, path) != false {
-				t.Errorf("artifact config %s AutoMigrate is not false", strings.Join(path, "."))
+			if valueAt(config, path) != true {
+				t.Errorf(
+					"artifact config %s must enable AutoMigrate at startup",
+					strings.Join(path, "."),
+				)
 			}
 		}
 	}

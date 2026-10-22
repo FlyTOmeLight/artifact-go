@@ -5,8 +5,8 @@ metadata:
 data:
   config.json: |
     {{- if include "artifact.forgeEnabled" . }}
-    {{- $db := dict "Driver" "PostgreSQL" "DSN" "${env:ARTIFACT_DATABASE_URL}" "AutoMigrate" false }}
-    {{- $storageDB := dict "Driver" "PostgreSQL" "DSN" "${env:STORAGE_DATABASE_URL}" "AutoMigrate" false }}
+    {{- $db := dict "Driver" "PostgreSQL" "DSN" "${env:ARTIFACT_DATABASE_URL}" "AutoMigrate" true }}
+    {{- $storageDB := dict "Driver" "PostgreSQL" "DSN" "${env:STORAGE_DATABASE_URL}" "AutoMigrate" true }}
     {{- $issuer := dict "Endpoint" .Values.global.forge.storageEndpoint "AccessKeyID" "${env:STS_ACCESS_KEY_ID}" "SecretAccessKey" "${env:STS_SECRET_ACCESS_KEY}" }}
     {{- $storage := dict "BackendID" (printf "%s-juicefs" .Release.Name) "Endpoint" .Values.global.forge.storageEndpoint "Region" "us-east-1" "AccessKeyID" "${env:S3_ACCESS_KEY_ID}" "SecretAccessKey" "${env:S3_SECRET_ACCESS_KEY}" "UsePathStyle" true "GrantIssuer" $issuer }}
     {{- $tenant := dict "Endpoint" (printf "https://%s-tenant.%s.svc:8443" .Release.Name .Release.Namespace) "ServiceToken" "${env:TENANT_SERVICE_TOKEN}" }}
