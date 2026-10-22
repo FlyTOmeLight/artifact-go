@@ -2,7 +2,9 @@
 
 日期：2026-10-16。范围：现有 OrbStack，API/Go SDK 首期联调，不增加完整上传 UI。以下保留首次文件联调证据；随后配置已纳入部署文件并完成重复部署验证，见 [配置收敛记录](deployment-consolidation-20261016.md)。
 
-## 当前可用入口与范围
+> 历史记录：本文独立应用与共享存储环境已于 2026-10-22 退役，以下地址、配置和结果仅描述当时验收。当前安装与访问见 [Forge 部署说明](../deploy/forge/README.md)。
+
+## 当时的入口与范围
 
 | 用途 | 本机地址 |
 | --- | --- |
@@ -17,19 +19,12 @@ SDK 每次请求携带正常 Forge 登录得到的 Session、CSRFToken、原始 
 
 既有租户的 bucket 回填任务已执行，查询时 26 项 succeeded。bucket 存在不代表上述文件权限已面向全部租户开放。
 
-本机端口转发可在退出后恢复：
-
-```sh
-kubectl --context orbstack -n forge-tenant-split port-forward svc/forge-tenant-web 8483:80
-kubectl --context orbstack -n artifact-storage port-forward svc/juicefs 19010:9000
-```
-
-这两个命令分别常驻一个终端；已有监听时不重复运行。S3 endpoint 在 artifact Pod 内通过本地 sidecar 转发到 JuiceFS，在宿主机通过 port-forward 使用相同地址；这是本机联调布局，不能直接作为远程客户端地址。
+旧端口转发操作入口已移除。当时 S3 endpoint 在 artifact Pod 内通过本地 sidecar 转发到 JuiceFS，在宿主机通过 port-forward 使用相同地址；这是已退役环境的本机联调布局。
 
 ## 部署变更
 
 - tenant API/worker 使用本地镜像 `forge-tenant-api:artifact-integration-20261016`，保留 AppKey、登录配置及既有数据；增加 scope API 和独立 bucket worker。
-- 新增 `forge-tenant-split/artifact`，使用 `artifact-go:forge-orbstack-20261016` 的 Forge combined 入口。artifact/storage 分别使用独立数据库及数据库用户，引用交接仍是本 Pod 回环 HTTP/JSON。
+- 在现已退役的独立应用环境新增 `artifact`，使用 `artifact-go:forge-orbstack-20261016` 的 Forge combined 入口。artifact/storage 分别使用独立数据库及数据库用户，引用交接仍是本 Pod 回环 HTTP/JSON。
 - 新增 `artifact-postgres` 及 1 GiB 元数据 PVC，两个业务数据库分别为 artifact、storage。原 JuiceFS 10 GiB PVC 不变；首次建表后已关闭两库 AutoMigrate，并重启验证。
 - tenant scope 调用和 tenant 到 storage 管理调用通过内部 8443 TLS；使用专用本地 CA，客户端校验证书。管理、交接、tenant 服务调用和 S3 issuer 凭据分离。
 - 现有前端 Nginx 仅新增 `/artifact/v1/`、`/storage/v1/` 代理，保留原 Cookie/Origin/CSRF；没有修改前端页面。内部接口不公开。

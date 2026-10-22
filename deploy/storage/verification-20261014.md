@@ -1,6 +1,6 @@
 # OrbStack 存储部署验证（2026-10-14）
 
-> 历史验证记录：原 RustFS + JuiceFS 环境已按用户要求删除并重建；当前仅运行 JuiceFS + Redis、本地 SSD 后端。见[当前部署记录](verification-20261015.md)。以下记录保留当时版本与环境的实际结果。
+> 历史验证记录：本文及 [2026-10-15 记录](verification-20261015.md)中的独立存储环境均已退役，旧部署输入和脚本已删除。当前部署使用 [Forge Helm chart](../../charts/forge/README.md)。以下保留当时版本与环境的实际结果。
 
 ## 已部署结果
 
@@ -25,8 +25,7 @@ RustFS 是真正的对象存储服务，JuiceFS 使用其 S3 协议保存数据�
 - JuiceFS gateway endpoint：`http://127.0.0.1:19010`。
 - region：`us-east-1`；SDK 使用 path-style。
 - Secret：`artifact-storage/storage-credentials`。
-- 本地凭证文件：`/private/tmp/artifact-storage/credentials.env`，权限 `0600`，不进入仓库。`AWS_*` 是 RustFS，`MINIO_ROOT_*` 是 JuiceFS gateway。
-- 重建转发：`deploy/storage/port-forward.sh`；Pod 重建后需重新运行。
+- 当时使用权限 `0600` 的本地凭证文件，不进入仓库；该旧输入已退役。`AWS_*` 是 RustFS，`MINIO_ROOT_*` 是 JuiceFS gateway。
 
 ## 固定版本及实际核验
 
@@ -55,9 +54,9 @@ RustFS 是真正的对象存储服务，JuiceFS 使用其 S3 协议保存数据�
 - 尝试写入禁止缺少 `If-None-Match` 对象创建的 bucket policy 被 RustFS 1.0.1 拒绝：`InvalidArgument: parse policy failed ... invalid key name: 's3:if-none-match'`。因此不能声称 bucket policy 已强制条件写。
 - IAM/STS 与完整直传契约由独立探针报告验收；本报告只确认部署、多 bucket 数据通路及重启持久性。
 
-## 复用部署
+## 当时的初始化行为
 
-运行 `deploy/storage/bootstrap.sh`：检查当前 context 为 OrbStack，按需生成权限 `0600` 的随机凭证，创建 Secret，构建 JuiceFS 镜像并部署。已有 Secret 和镜像直接复用，不覆盖凭证。
+旧初始化脚本按需生成权限 `0600` 的随机凭证，创建 Secret，构建 JuiceFS 镜像并部署；已有 Secret 和镜像直接复用，不覆盖凭证。该脚本已删除，不再作为部署入口。
 
 JuiceFS `format` 会在后端 bucket 不存在时自动创建；已在独立 Redis DB 2 和临时 `juicefs-bootstrap-check` bucket 实测通过，验证后清理该元数据与 bucket。已有部署 `format --no-update` 保留当前文件系统，不使用 `--force`。
 

@@ -1,8 +1,10 @@
 # JuiceFS 本地 SSD 部署（2026-10-15）
 
-按用户要求，仅保留 JuiceFS 多 bucket gateway 和 Redis 元数据库。旧测试数据不迁移：原 Deployment、RustFS Service 和旧 PVC/PV 已删除，然后创建新的 10 GiB PVC。
+> 此独立存储环境已退役，旧部署输入和脚本已删除。当前部署使用 [Forge Helm chart](../../charts/forge/README.md)；以下记录仅说明当时的实测结果。
 
-## 当前结构
+当时按用户要求，仅保留 JuiceFS 多 bucket gateway 和 Redis 元数据库。旧测试数据不迁移：原 Deployment、RustFS Service 和旧 PVC/PV 已删除，然后创建新的 10 GiB PVC。
+
+## 当时的结构
 
 ```text
 S3 客户端 → http://127.0.0.1:19010 → JuiceFS gateway --multi-buckets
@@ -19,14 +21,12 @@ S3 客户端 → http://127.0.0.1:19010 → JuiceFS gateway --multi-buckets
 - 已创建两个空 bucket：`artifact-data`、`artifact-models`。多 bucket 映射到 JuiceFS 顶层目录，共享文件系统容量。
 - 未配置训练节点 FUSE 挂载。采用本地 file 后端时，挂载客户端需要能访问同一数据目录与元数据库；远程机器仅连接 Redis 不足以访问数据。
 
-## 使用
+## 当时的访问配置
 
-- S3 endpoint：`http://127.0.0.1:19010`；region：`us-east-1`；使用 path-style。
-- 启动或重复部署：`deploy/storage/bootstrap.sh`。
-- 本机端口转发：`deploy/storage/port-forward.sh`。Pod 重建后需重启转发；只监听 `127.0.0.1`。
+- S3 endpoint：`http://127.0.0.1:19010`；region：`us-east-1`；使用 path-style，仅绑定 loopback。
 - Kubernetes Secret：`artifact-storage/storage-credentials`。
-- 本机凭证文件：`/private/tmp/artifact-storage/credentials.env`，权限 `0600`。保留 `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`；原 RustFS 的 `AWS_*` 字段已删除。
-- 对应 S3 SDK 的 access key / secret key 分别取上述两个字段；凭证不进入仓库或命令行。此身份是 Gateway 管理员，限权临时上传凭证需要另外配置普通 IAM 用户。
+- 本地凭证文件权限为 `0600`，包含 `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`；原 RustFS 的 `AWS_*` 字段已删除。该旧输入已退役。
+- SDK 使用上述 Gateway 管理员身份；限权临时上传凭证需要另外配置普通 IAM 用户。
 
 ## 验证结果
 

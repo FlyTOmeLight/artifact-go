@@ -14,6 +14,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/prometheus/client_golang v1.25.0
+	github.com/spf13/viper v1.21.0
+	go.yaml.in/yaml/v3 v3.0.5
 	gorm.io/gorm v1.31.2
 	resty.dev/v3 v3.0.0-rc.4
 )
@@ -85,7 +87,6 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/spf13/viper v1.21.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tbrandon/mbserver v0.0.0-20231208015628-36eb59221ac2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
@@ -101,7 +102,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/arch v0.32.0 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.61.0 // indirect

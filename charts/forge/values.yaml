@@ -1,0 +1,71 @@
+global:
+  forge:
+    enabled: true
+    publicURL: ""
+    # Must be reachable by upload/download clients and the artifact Pod.
+    storageEndpoint: ""
+    external:
+      casdoorURL: ""
+      issuer: ""
+      organization: ""
+      certificate: ""
+      gitlabURL: ""
+      gitlabPublicURL: ""
+      gitlabOIDCClientID: ""
+      caPEM: ""
+      # Set this to a pre-created Secret for server-side install; leave empty to use caPEM.
+      caSecret: ""
+    bootstrap:
+      username: ""
+      email: ""
+      # Explicit date; upgrades do not silently extend or rotate credentials.
+      gitlabTokenExpiresAt: ""
+bootstrap:
+  existingSecret: ""
+  # Used only when existingSecret is empty. Never put real values in Git.
+  authorization:
+    casdoorClientID: ""
+    casdoorClientSecret: ""
+    gitlabToken: ""
+  timeoutSeconds: 300
+artifact:
+  image:
+    repository: artifact-go
+    tag: ""
+    pullPolicy: IfNotPresent
+  initialization:
+    enabled: true
+    timeout: 5m
+    storageImage:
+      repository: artifact-go-storage-bootstrap
+      tag: ""
+      pullPolicy: IfNotPresent
+  postgres:
+    storageClass: local-path
+    size: 1Gi
+tenant:
+  image:
+    repository: forge-tenant-api
+    tag: ""
+    pullPolicy: IfNotPresent
+  api:
+    replicas: 1
+  worker:
+    replicas: 1
+web:
+  image:
+    repository: forge-tenant-web
+    tag: ""
+    pullPolicy: IfNotPresent
+  coding:
+    enabled: false
+  agent:
+    enabled: false
+juicefs:
+  image:
+    repository: artifact-juicefs
+    tag: 1.4.1-arm64
+    pullPolicy: IfNotPresent
+  persistence:
+    storageClass: local-path
+    size: 10Gi

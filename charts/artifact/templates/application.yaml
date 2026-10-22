@@ -1,21 +1,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "artifact.fullname" . }}
 spec:
   replicas: 1
+  {{- if .Values.initialization.enabled }}
+  strategy: {type: Recreate}
+  {{- end }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app: {{ include "artifact.fullname" . }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}
+        app: {{ include "artifact.fullname" . }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 45
+      {{- if .Values.initialization.enabled }}
+      initContainers:
+        - name: migrate
+          image: {{ printf "%s:%s" .Values.image.repository (required "image.tag is required" .Values.image.tag) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/usr/local/bin/artifact-migrate]
+          args: ["--config=/config/config.json", {{ printf "--timeout=%s" .Values.initialization.timeout | quote }}]
+          envFrom:
+            - secretRef: {name: {{ include "artifact.secret" . }}}
+          volumeMounts:
+            - {name: config, mountPath: /config, readOnly: true}
+        {{- if include "artifact.forgeEnabled" . }}
+        - name: storage-iam
+          image: {{ printf "%s:%s" .Values.initialization.storageImage.repository (required "initialization.storageImage.tag is required" .Values.initialization.storageImage.tag) | quote }}
+          imagePullPolicy: {{ .Values.initialization.storageImage.pullPolicy }}
+          command: [/usr/local/bin/artifact-storage-bootstrap]
+          args:
+            - {{ printf "--endpoint=http://%s-juicefs:9000" .Release.Name | quote }}
+            - {{ printf "--owner=%s-%s" .Release.Namespace .Release.Name | quote }}
+            - {{ printf "--timeout=%s" .Values.initialization.timeout | quote }}
+          envFrom:
+            - secretRef: {name: {{ include "artifact.secret" . }}}
+        {{- end }}
+      {{- end }}
       containers:
         - name: api
           image: {{ printf "%s:%s" .Values.image.repository (required "image.tag is required" .Values.image.tag) | quote }}
@@ -28,7 +55,7 @@ spec:
               value: /tls/ca.crt
           envFrom:
             - secretRef:
-                name: {{ required "existingSecret is required" .Values.existingSecret }}
+                name: {{ include "artifact.secret" . }}
           ports:
             - containerPort: 18080
           readinessProbe:
@@ -70,24 +97,36 @@ spec:
             - name: integration-nginx
               mountPath: /config
               readOnly: true
+            - name: integration-tmp
+              mountPath: /tmp
+            - name: integration-cache
+              mountPath: /var/cache/nginx
       volumes:
         - name: config
           configMap:
-            name: {{ .Release.Name }}-runtime
+            name: {{ include "artifact.fullname" . }}-runtime
         - name: integration-tls
           secret:
-            secretName: {{ required "tlsSecret is required" .Values.tlsSecret }}
+            secretName: {{ include "artifact.tlsSecret" . }}
+            items:
+              - {key: ca.crt, path: ca.crt}
+              - {key: artifact.crt, path: artifact.crt}
+              - {key: artifact.key, path: artifact.key}
         - name: integration-nginx
           configMap:
-            name: {{ .Release.Name }}-integration-nginx
+            name: {{ include "artifact.fullname" . }}-integration-nginx
+        - name: integration-tmp
+          emptyDir: {}
+        - name: integration-cache
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "artifact.fullname" . }}
 spec:
   selector:
-    app: {{ .Release.Name }}
+    app: {{ include "artifact.fullname" . }}
   ports:
     - name: http
       port: 80

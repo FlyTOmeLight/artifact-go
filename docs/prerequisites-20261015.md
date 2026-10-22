@@ -2,6 +2,8 @@
 
 server-go 事务前置已完成；对象存储环境已部署。按用户最新决策，发布后的对象修改由客户端负责，取消服务端防覆盖及复制封存要求，并采用一租户一个 bucket。JSON 快照和数据库文件清单仍不可修改。无文件版本业务可以使用正式框架能力开始实现；文件上传仍需完成权限隔离、对象存在/大小核验及回收验收。
 
+> 历史进度记录：下文存储部署已退役，状态与结果均以 2026-10-15 为准。当前安装与访问见 [Forge 部署说明](../deploy/forge/README.md)。
+
 ## 框架事务：已完成
 
 - [PR #16](https://github.com/FlyTOmeLight/server-go/pull/16) 已合入 main，提交 `d61d3a6a12bc52386ffe8ac08ba7f8f4ef081f02`。
@@ -13,11 +15,11 @@ server-go 事务前置已完成；对象存储环境已部署。按用户最新�
 
 ## 对象存储：已部署，契约未通过
 
-本机 OrbStack 的 `artifact-storage` 现仅运行 JuiceFS 1.4.1 多 bucket gateway 和 Redis 7.4.2。按用户要求，旧测试卷已删除，不迁移数据；RustFS 容器、Service、原生 S3 转发和凭证字段已移除。
+已退役的本机 OrbStack 独立存储环境当时仅运行 JuiceFS 1.4.1 多 bucket gateway 和 Redis 7.4.2。按用户要求，旧测试卷已删除，不迁移数据；RustFS 容器、Service、原生 S3 转发和凭证字段已移除。
 
 JuiceFS 使用 `file` 后端，数据块直接保存到本机 SSD 上的 10 GiB PVC，Redis AOF 与数据块分别持久化。`local-path` 的容量请求不是磁盘硬配额；JuiceFS 逻辑容量为 9 GiB，缓存为 256 MiB。
 
-唯一 S3 入口：`http://127.0.0.1:19010`，region `us-east-1`，path-style。部署配置与复用方式见 [当前部署记录](../deploy/storage/verification-20261015.md)。
+当时的 S3 入口为 `http://127.0.0.1:19010`，region `us-east-1`，path-style。历史配置见 [退役环境部署记录](../deploy/storage/verification-20261015.md)，不再作为部署或复用入口。
 
 [原部署契约报告](storage-contract/results-20261015.md)保留为历史能力证据。用户已取消发布后防覆盖要求，并否决暂存区复制到最终位置的封存方案；服务不因发布撤销已签发上传凭证。版本发布冻结数据库清单；旧上传会话与 sealed 状态已移除，固定引用保证版本及文件记录身份，不保证外部文件字节持续不变。artifact继续决定版本保留与逻辑删除；storage负责临时文件过期和物理回收，双方按独立事务持久交接，见[当前设计](version-service-technical-design-20261013.md)。
 

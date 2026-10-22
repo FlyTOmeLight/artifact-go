@@ -32,13 +32,12 @@ REPORT = (
 )
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--admin-helper", required=True, type=Path)
+parser.add_argument("--credentials-file", required=True, type=Path)
 args = parser.parse_args()
 checks = []
 run = "t00-" + secrets.token_hex(6)
 env = {}
-for line in (
-    Path("/private/tmp/artifact-storage/credentials.env").read_text().splitlines()
-):
+for line in args.credentials_file.read_text().splitlines():
     if "=" in line and not line.startswith("#"):
         key, value = line.removeprefix("export ").split("=", 1)
         env[key] = shlex.split(value)[0]

@@ -2,6 +2,8 @@
 
 本轮已将 Forge 身份接入部署到本机 OrbStack，并通过独立无头 Chrome 完成真实 Casdoor 登录和同源浏览器请求。生产参数仍按约定后定。
 
+> 历史记录：本文独立应用与共享存储环境已于 2026-10-22 退役；版本、资源快照与实测结果保持为当时证据。当前安装与访问见 [Forge 部署说明](../deploy/forge/README.md)。
+
 ## 提交范围
 
 - artifact-go `70241bb`：Forge session SDK、身份适配、可选入口及四层联合恢复。
@@ -12,13 +14,13 @@
 
 | 组件 | 结果 |
 | --- | --- |
-| tenant API/worker | `forge-tenant-split`，Helm revision 34；镜像 `forge-tenant-api:artifact-integration-20261016`，均 Ready |
+| tenant API/worker | 已退役的独立应用环境，Helm revision 34；镜像 `forge-tenant-api:artifact-integration-20261016`，均 Ready |
 | 前端 | Helm revision 30；保留原 `forge-tenant-web:0.14.1-enterprise-assets` 镜像与既有 Agent/Coding/Tenant 路由，仅更新代理及 CA 配置 |
 | artifact/storage | `artifact-storage` 中 combined Forge 服务，镜像 `artifact-go:forge-verification`；独立 PostgreSQL 的 artifact/storage 两库、两角色 |
 | 内部网络 | 私有 CA 校验的 tenant TLS bridge 和 artifact TLS sidecar；引用交接端口仅监听 Pod loopback |
 | 数据库迁移 | tenant 原库先 pg_dump，再恢复到独占副本，当前迁移连续执行两次通过；原 13 用户、24 租户保留。artifact/storage 初次初始化后关闭 AutoMigrate |
 
-运行配置、证书和专用凭据保存在忽略的私有目录，未进入 Git。tenant 原数据库及原 Secret 回退材料保留在其 `.local/artifact-deploy-20261016-221436/`。部署脚本与无密钥清单见 [deploy/forge](../deploy/forge/README.md)。
+运行配置、证书和专用凭据保存在忽略的私有目录，未进入 Git。tenant 原数据库及原 Secret 回退材料保留在其 `.local/artifact-deploy-20261016-221436/`。旧部署操作入口已移除，当前部署见 [deploy/forge](../deploy/forge/README.md)。
 
 ## 浏览器和任务证据
 
@@ -36,6 +38,6 @@
 
 ## 验证边界
 
-本轮验证真实登录与 JSON 版本闭环；当前部署未配置 STS issuer，未启用 grants，未验证真实文件字节上传或文件选择 UI。前端仍是现有工作台，物料请求由登录后的浏览器执行验收脚本触发。生产容量、备份位置、RPO/RTO 未设定。
+本轮验证真实登录与 JSON 版本闭环；当时部署未配置 STS issuer，未启用 grants，未验证真实文件字节上传或文件选择 UI。前端仍是现有工作台，物料请求由登录后的浏览器执行验收脚本触发。生产容量、备份位置、RPO/RTO 未设定。
 
 提交前复用上一轮完整双库/race 检查；tenant 拆分基线另跑真实 PostgreSQL 全仓 race，前端从干净暂存快照执行 build、代理回归及 Helm 检查。部署后验证实际 readiness、TLS 信任、迁移结果和上述浏览器链路。远程 CI 状态单独核实，不以本机验收代替。

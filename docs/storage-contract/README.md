@@ -1,10 +1,10 @@
-> 最新T00实测见[2026-10-15普通IAM与现行契约报告](t00-juicefs-report.md)，可复跑脚本为 `scripts/verify_juicefs_t00.py`。下文旧探针与历史报告仍保留；不能把旧摘要/防覆盖失败继续当作当前业务门槛。
+> 最新T00实测见[2026-10-15普通IAM与现行契约报告](t00-juicefs-report.md)，探针脚本为 `scripts/verify_juicefs_t00.py`，运行时须用 `--credentials-file /path/to/credentials.env` 显式提供测试环境凭据，并用 `--admin-helper` 指定辅助程序；`scripts/verify_juicefs_t08.py` 同样要求 `--credentials-file`。下文旧探针与历史报告仍保留；不能把旧摘要/防覆盖失败继续当作当前业务门槛。
 
 # 对象存储直传契约验证
 
 > 最新grill已决定仅核对对象存在和大小，摘要为客户端声明；下列脚本及机器报告仍保留旧严格摘要探针行为，尚未适配本轮决定。本轮只改设计，不能用旧摘要失败阻塞新契约，也不能把旧报告改成通过。
 
-本目录与 `scripts/verify_s3_contract.py` 提供真实端点探针。当前部署为 JuiceFS 多 bucket gateway + Redis，数据直接写本地 SSD，见[当前部署记录](../../deploy/storage/verification-20261015.md)。RustFS 已按用户要求移除，原报告保留为历史验证记录，不能把 RustFS 的结果用于证明 gateway 通过。当前工具支持 RustFS 原生 STS、JuiceFS gateway STS 请求和 AWS STS，不自动创建 bucket、IAM 用户或更改远端策略。实际入口、镜像版本及结果由部署记录补充。
+本目录与 `scripts/verify_s3_contract.py` 提供真实端点探针。2026-10-15 的独立 JuiceFS 多 bucket gateway + Redis 环境已退役，相关报告仅保留历史实测证据。当前安装与访问见 [Forge 部署说明](../../deploy/forge/README.md)。RustFS 已按用户要求移除，原报告保留为历史验证记录，不能把 RustFS 的结果用于证明 gateway 通过。当前工具支持 RustFS 原生 STS、JuiceFS gateway STS 请求和 AWS STS，不自动创建 bucket、IAM 用户或更改远端策略。实际入口、镜像版本及结果由部署记录补充。
 
 当前契约采用一租户一个 bucket，同租户各项目共享该 bucket，由服务按可信 TenantID 解析位置。发布后的对象修改由客户端负责；服务不要求条件写、不撤销已签发凭证、不复制封存对象。版本发布冻结数据库文件清单，JSON 快照和固定记录保持不变，固定引用不保证外部对象字节持续不变。确认时对象存在/大小核验、凭证时限、操作范围、跨租户隔离及正常回收要求保留。
 
@@ -20,7 +20,7 @@
 
 ## 运行
 
-当前部署的私有凭证文件只保留 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`，运行 SDK 时分别映射到 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`。root 只能用于 `--service-only` 数据验证；完整 STS 验证需普通 IAM 用户及其限权配置。
+运行 SDK 时通过 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` 或具名 profile 提供本次测试身份的凭据；不要复用退役环境的私有凭证文件。root 只能用于 `--service-only` 数据验证；完整 STS 验证需普通 IAM 用户及其限权配置。
 
 安装 `uv`，通过环境变量或具名 profile 提供服务凭证；不要把 secret 写在命令行、报告或仓库文件中。示例中的端点和 bucket 必须换成部署实际值。
 

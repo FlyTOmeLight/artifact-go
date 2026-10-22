@@ -4,6 +4,7 @@
 # ///
 """Provision one temporary ordinary IAM issuer and execute T08 live Go tests."""
 
+import argparse
 import json
 import os
 import secrets
@@ -11,10 +12,11 @@ import shlex
 import subprocess
 from pathlib import Path
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--credentials-file", required=True, type=Path)
+args = parser.parse_args()
 root = {}
-for line in (
-    Path("/private/tmp/artifact-storage/credentials.env").read_text().splitlines()
-):
+for line in args.credentials_file.read_text().splitlines():
     if "=" in line and not line.startswith("#"):
         k, v = line.removeprefix("export ").split("=", 1)
         root[k] = shlex.split(v)[0]

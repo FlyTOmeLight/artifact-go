@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "juicefs.fullname" . }}
+  labels:
+    {{- include "juicefs.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "juicefs.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "juicefs.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+        - name: prepare-volume
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command: [sh, -ec]
+          args:
+            - mkdir -p /storage/juicefs-data /storage/redis /storage/juicefs-cache
+          volumeMounts:
+            - name: data
+              mountPath: /storage
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          restartPolicy: Always
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --bind
+            - "127.0.0.1"
+            - --protected-mode
+            - "yes"
+          startupProbe:
+            exec:
+              command: [sh, -ec, 'test "$(redis-cli -h 127.0.0.1 ping)" = PONG']
+            periodSeconds: 2
+            failureThreshold: 150
+          readinessProbe:
+            exec:
+              command: [sh, -ec, 'test "$(redis-cli -h 127.0.0.1 ping)" = PONG']
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: redis
+        - name: validate-metadata
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          # --no-update returns success for any existing format. Validate the
+          # persisted identity first; never print metadata or reset a database.
+          command: [redis-cli, -e, -h, "127.0.0.1", -n, "1", EVAL]
+          args:
+            - |
+              local setting = redis.call('GET', 'setting')
+              if not setting then
+                if redis.call('DBSIZE') ~= 0 then
+                  return redis.error_reply('metadata missing in nonempty database; refusing format')
+                end
+                return 'empty metadata database'
+              end
+              local ok, format = pcall(cjson.decode, setting)
+              if not ok or type(format) ~= 'table' then
+                return redis.error_reply('invalid JuiceFS metadata; refusing startup')
+              end
+              if format.Name ~= 'artifact-jfs' or format.Storage ~= 'file' or format.Bucket ~= '/data/' then
+                return redis.error_reply('JuiceFS volume name, storage or bucket mismatch; refusing startup')
+              end
+              return 'JuiceFS metadata matches'
+            - "0"
+        - name: format
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [juicefs]
+          args:
+            - format
+            - --no-update
+            - --storage
+            - file
+            - --bucket
+            - /data
+            - --trash-days
+            - "1"
+            - redis://127.0.0.1:6379/1
+            - artifact-jfs
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: juicefs-data
+      containers:
+        - name: juicefs
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [juicefs]
+          args:
+            - gateway
+            - --multi-buckets
+            - --keep-etag
+            - --object-meta
+            - --cache-dir
+            - /cache
+            - --cache-size
+            - "256"
+            - --buffer-size
+            - "32"
+            - --no-usage-report
+            - --no-banner
+            - redis://127.0.0.1:6379/1
+            - 0.0.0.0:9010
+          envFrom:
+            - secretRef:
+                name: {{ include "juicefs.credentialsSecret" . }}
+          ports:
+            - name: s3
+              containerPort: 9010
+          readinessProbe:
+            tcpSocket:
+              port: s3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: juicefs-data
+            - name: data
+              mountPath: /cache
+              subPath: juicefs-cache
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "juicefs.claimName" . }}

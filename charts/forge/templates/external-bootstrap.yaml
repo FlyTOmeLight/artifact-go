@@ -1,0 +1,95 @@
+{{- $f := .Values.global.forge -}}
+{{- $name := printf "%s-external-bootstrap" .Release.Name -}}
+{{- $input := default (printf "%s-bootstrap-input" .Release.Name) .Values.bootstrap.existingSecret -}}
+{{- if not .Values.bootstrap.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $input }}
+type: Opaque
+stringData:
+  CASDOOR_ADMIN_CLIENT_ID: {{ required "bootstrap.authorization.casdoorClientID or bootstrap.existingSecret is required" .Values.bootstrap.authorization.casdoorClientID | quote }}
+  CASDOOR_ADMIN_CLIENT_SECRET: {{ required "bootstrap.authorization.casdoorClientSecret is required" .Values.bootstrap.authorization.casdoorClientSecret | quote }}
+  GITLAB_ADMIN_TOKEN: {{ required "bootstrap.authorization.gitlabToken is required" .Values.bootstrap.authorization.gitlabToken | quote }}
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+data:
+  config.json: |
+    {{- dict "CasdoorURL" $f.external.casdoorURL "CasdoorOrganization" $f.external.organization "CasdoorCertificate" (required "global.forge.external.certificate is required" $f.external.certificate) "OIDCApplication" (printf "%s-%s-console" .Release.Namespace .Release.Name) "ManagementApplication" (printf "%s-%s-management" .Release.Namespace .Release.Name) "PublicURL" $f.publicURL "BootstrapUsername" (required "global.forge.bootstrap.username is required" $f.bootstrap.username) "BootstrapEmail" (required "global.forge.bootstrap.email is required" $f.bootstrap.email) "GitLabURL" $f.external.gitlabURL "GitLabTokenName" (printf "%s-%s-tenant" .Release.Namespace .Release.Name) "GitLabTokenExpiresAt" (required "global.forge.bootstrap.gitlabTokenExpiresAt is required" $f.bootstrap.gitlabTokenExpiresAt) "Namespace" .Release.Namespace "OutputSecret" (printf "%s-external-credentials" .Release.Name) "AdminDirectory" "/bootstrap-admin" "SeedDirectory" "/identity-seed" "CAFile" "/external-ca/ca.crt" "TimeoutSeconds" .Values.bootstrap.timeoutSeconds | toPrettyJson | nindent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [{{ printf "%s-external-credentials" .Release.Name | quote }}]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-{{ .Release.Revision }}
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: {{ add .Values.bootstrap.timeoutSeconds 60 }}
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      restartPolicy: Never
+      containers:
+        - name: bootstrap
+          image: {{ printf "%s:%s" .Values.tenant.image.repository (required "tenant.image.tag is required" .Values.tenant.image.tag) | quote }}
+          imagePullPolicy: {{ .Values.tenant.image.pullPolicy }}
+          command: [/forge]
+          args: [external-bootstrap, --config, /bootstrap/config.json]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /bootstrap, readOnly: true}
+            - {name: admin, mountPath: /bootstrap-admin, readOnly: true}
+            - {name: seed, mountPath: /identity-seed, readOnly: true}
+            - {name: ca, mountPath: /external-ca, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: {{ $name }}}
+        - name: admin
+          secret: {secretName: {{ $input }}}
+        - name: seed
+          secret: {secretName: {{ .Release.Name }}-identity-seed}
+        - name: ca
+          secret: {secretName: {{ .Values.global.forge.external.caSecret | default (printf "%s-external-ca" .Release.Name) }}}
