@@ -4,12 +4,15 @@ dependencies:
   version: 0.3.0
 - name: forge-tenant
   repository: file://../../../forge-tenant-api/charts/forge-tenant
-  version: 0.10.0
+  version: 0.11.0
+- name: forge-tenant-init
+  repository: file://../../../forge-tenant-api/charts/forge-tenant-init
+  version: 0.1.0
 - name: forge-tenant-web
   repository: file://../../../forge-tenant-web/charts/forge-tenant-web
   version: 0.3.0
 - name: juicefs
   repository: file://../juicefs
   version: 0.1.0
-digest: sha256:d9845a292d01727401a1204b5377b562ca76bcbfbc47325fb7745e731c706558
-generated: "2026-10-20T18:46:02.183558+08:00"
+digest: sha256:37eb129f5a5c9eafebeab2f740b76f34252dc3082d704df16960bc3254f45525
+generated: "2026-10-22T22:59:47.077623+08:00"

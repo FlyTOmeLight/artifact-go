@@ -9,9 +9,10 @@
       "properties": {
         "forge": {
           "type": "object",
-          "required": ["enabled", "publicURL", "storageEndpoint", "external", "bootstrap"],
+          "required": ["enabled", "tenantImage", "publicURL", "storageEndpoint", "external", "bootstrap"],
           "properties": {
             "enabled": {"const": true},
+            "tenantImage": {"$ref": "#/definitions/image"},
             "publicURL": {"type": "string", "pattern": "^https?://[^/]+$"},
             "storageEndpoint": {"type": "string", "pattern": "^https?://[^/]+$"},
             "external": {
@@ -45,12 +46,11 @@
     "bootstrap": {
       "type": "object",
       "properties": {
-        "existingSecret": {"type": "string"},
-        "timeoutSeconds": {"type": "integer", "minimum": 30, "maximum": 600}
+        "existingSecret": {"type": "string"}
       }
     },
     "artifact": {"type": "object", "properties": {"fullnameOverride": {"const": ""}, "image": {"$ref": "#/definitions/image"}, "initialization": {"type": "object", "properties": {"enabled": {"const": true}, "storageImage": {"$ref": "#/definitions/image"}}}, "postgres": {"type": "object", "properties": {"existingClaim": {"const": ""}}}}},
-    "tenant": {"type": "object", "properties": {"fullnameOverride": {"const": ""}, "image": {"$ref": "#/definitions/image"}, "postgres": {"type": "object", "properties": {"enabled": {"const": true}}}}},
+    "tenant": {"type": "object", "properties": {"fullnameOverride": {"const": ""}, "postgres": {"type": "object", "properties": {"enabled": {"const": true}}}}},
     "juicefs": {"type": "object", "properties": {"fullnameOverride": {"const": ""}, "persistence": {"type": "object", "properties": {"existingClaim": {"const": ""}}}}},
     "web": {
       "type": "object",

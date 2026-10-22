@@ -198,9 +198,8 @@ func TestAcceptsDerivedNameBoundaries(t *testing.T) {
 	}
 }
 
-// checkDerivedNameLengths measures the rendered resources and the identities
-// rendered into the bootstrap ConfigMap, so a boundary acceptance cannot hide
-// a name that Kubernetes or the tenant CLI would reject.
+// checkDerivedNameLengths checks resources and the stable identities shared with
+// the tenant initializer, including the namespace/release naming boundaries.
 func checkDerivedNameLengths(t *testing.T, r rendered, release, namespace string) {
 	t.Helper()
 	// Kubernetes DNS-1123 subdomain limit for names created by this chart.
@@ -210,12 +209,9 @@ func checkDerivedNameLengths(t *testing.T, r rendered, release, namespace string
 			t.Errorf("resource %s has a %d-character name", key, len(name))
 		}
 	}
-	configMap := r.resources["ConfigMap/"+release+"-external-bootstrap"]
-	config := parseJSON(t, stringValue(mapValue(configMap["data"])["config.json"]))
-	for _, key := range []string{"Namespace", "OutputSecret", "OIDCApplication", "ManagementApplication", "GitLabTokenName"} {
-		value := stringValue(config[key])
+	for _, value := range []string{namespace, release + "-external-credentials", namespace + "-" + release + "-console", namespace + "-" + release + "-management", namespace + "-" + release + "-tenant"} {
 		if len(value) < 2 || len(value) > 63 {
-			t.Errorf("bootstrap identity %s is %d characters; want 2-63", key, len(value))
+			t.Errorf("bootstrap identity %s is %d characters; want 2-63", value, len(value))
 		}
 	}
 	seed := secretData(t, r, release+"-identity-seed")
@@ -594,53 +590,96 @@ func assertRoleScope(t *testing.T, r rendered, release string) {
 
 func assertBootstrapContract(t *testing.T, r rendered, release, namespace string) {
 	t.Helper()
-	configMap := r.resources["ConfigMap/"+release+"-external-bootstrap"]
-	if configMap == nil {
-		t.Fatalf("missing external bootstrap ConfigMap")
-	}
-	config := parseJSON(t, stringValue(mapValue(configMap["data"])["config.json"]))
-	for _, key := range []string{"CasdoorURL", "CasdoorOrganization", "CasdoorCertificate", "OIDCApplication", "ManagementApplication", "PublicURL", "BootstrapUsername", "BootstrapEmail", "GitLabURL", "GitLabTokenName", "GitLabTokenExpiresAt", "Namespace", "OutputSecret", "AdminDirectory", "SeedDirectory", "CAFile", "TimeoutSeconds"} {
-		if _, ok := config[key]; !ok {
-			t.Errorf("external bootstrap config is missing %s", key)
-		}
-	}
-	if len(config) != 17 {
-		t.Errorf("external bootstrap config has %d keys; the tenant CLI rejects unknown fields", len(config))
+	if r.resources["ConfigMap/"+release+"-external-bootstrap"] != nil {
+		t.Error("external bootstrap still renders a separate JSON config")
 	}
 	seed := secretData(t, r, release+"-identity-seed")
-	if config["OIDCApplication"] != seed["OIDC_CLIENT_ID"] ||
-		config["ManagementApplication"] != seed["CASDOOR_CLIENT_ID"] {
-		t.Errorf("Casdoor application names do not match the identity seed client IDs")
-	}
-	if config["Namespace"] != namespace || config["OutputSecret"] != release+"-external-credentials" {
-		t.Errorf("external bootstrap writes to an unexpected namespace or Secret")
-	}
-	if config["AdminDirectory"] != "/bootstrap-admin" || config["SeedDirectory"] != "/identity-seed" ||
-		config["CAFile"] != "/external-ca/ca.crt" {
-		t.Errorf("external bootstrap directories do not match the Job mounts")
+	if seed["OIDC_CLIENT_ID"] != namespace+"-"+release+"-console" ||
+		seed["CASDOOR_CLIENT_ID"] != namespace+"-"+release+"-management" {
+		t.Error("identity seed does not match the initializer's stable application names")
 	}
 	job := r.resources["Job/"+release+"-external-bootstrap-1"]
 	if job == nil {
 		t.Fatalf("missing external bootstrap Job")
 	}
+	if mapValue(mapValue(job["metadata"])["annotations"])["helm.sh/hook"] != nil {
+		t.Error("external bootstrap must run before workloads are ready, without a Helm hook")
+	}
+	if mapValue(job["spec"])["activeDeadlineSeconds"] != 360 {
+		t.Error("external bootstrap Job deadline must cover the 300-second execution budget")
+	}
 	containers := sliceMaps(podSpec(job)["containers"])
 	if len(containers) != 1 {
 		t.Fatalf("external bootstrap Job has %d containers; want one", len(containers))
 	}
-	if !equalStrings(stringSlice(containers[0]["command"]), []string{"/forge"}) ||
-		!equalStrings(
-			stringSlice(containers[0]["args"]),
-			[]string{"external-bootstrap", "--config", "/bootstrap/config.json"},
-		) {
+	if !equalStrings(stringSlice(containers[0]["command"]), []string{"/forge-init"}) ||
+		!equalStrings(stringSlice(containers[0]["args"]), []string{"external-bootstrap"}) {
 		t.Errorf("external bootstrap Job does not call the tenant CLI contract")
+	}
+	env := map[string]map[string]any{}
+	for _, item := range sliceMaps(containers[0]["env"]) {
+		env[stringValue(item["name"])] = item
+	}
+	for key, expected := range map[string]string{
+		"CASDOOR_URL":             "http://casdoor.tenant-lab.svc.cluster.local:8000",
+		"CASDOOR_ORGANIZATION":    "lab-identities",
+		"GITLAB_URL":              "http://gitlab-webservice-default.tenant-lab.svc.cluster.local:8181",
+		"PUBLIC_URL":              "http://127.0.0.1:8483",
+		"CA_FILE":                 "/external-ca/ca.crt",
+		"BOOTSTRAP_CERTIFICATE":   "cert-built-in",
+		"BOOTSTRAP_USERNAME":      "forge-helm-admin",
+		"BOOTSTRAP_EMAIL":         "forge-helm-admin@example.test",
+		"GITLAB_TOKEN_EXPIRES_AT": "2027-10-19",
+		"HELM_RELEASE_NAME":       release,
+	} {
+		if env[key]["value"] != expected {
+			t.Errorf("initializer TOML input %s does not match chart values", key)
+		}
+	}
+	if valueAt(env["POD_NAMESPACE"], []string{"valueFrom", "fieldRef", "fieldPath"}) != "metadata.namespace" {
+		t.Error("initializer namespace must come from Pod metadata")
+	}
+	if len(sliceMaps(containers[0]["envFrom"])) != 0 {
+		t.Error("initializer must not load runtime Secret environment")
+	}
+	for _, mode := range []string{"api", "worker"} {
+		pod := podSpec(r.resources["Deployment/"+release+"-tenant-"+mode])
+		if pod["automountServiceAccountToken"] != false {
+			t.Errorf("tenant %s must not receive Kubernetes credentials", mode)
+		}
+		inits := sliceMaps(pod["initContainers"])
+		expected := []string{"wait-external", "migrate"}
+		if mode == "api" {
+			expected = append(expected, "artifact-service-key", "bootstrap")
+		}
+		var names []string
+		for _, c := range inits {
+			names = append(names, stringValue(c["name"]))
+		}
+		if !equalStrings(names, expected) {
+			t.Errorf("tenant %s initialization order is incorrect", mode)
+		}
+		if len(inits) > 0 && (!equalStrings(stringSlice(inits[0]["command"]), []string{"/forge-init"}) ||
+			!equalStrings(stringSlice(inits[0]["args"]), []string{"wait-external", "--directory", "/external"})) {
+			t.Errorf("tenant %s does not wait through the initializer entrypoint", mode)
+		}
+		for _, c := range append(inits, sliceMaps(pod["containers"])...) {
+			if c["name"] != "integration-tls" && c["image"] != containers[0]["image"] {
+				t.Errorf("tenant %s and initializer do not share the same image", mode)
+			}
+		}
+		for _, v := range sliceMaps(pod["volumes"]) {
+			if mapValue(v["secret"])["secretName"] == "fixture-admin" {
+				t.Errorf("tenant %s mounts initialization administrator input", mode)
+			}
+		}
 	}
 	mounts := map[string]string{}
 	for _, mount := range sliceMaps(containers[0]["volumeMounts"]) {
 		mounts[stringValue(mount["name"])] = stringValue(mount["mountPath"])
 	}
-	if mounts["admin"] != config["AdminDirectory"] || mounts["seed"] != config["SeedDirectory"] ||
-		mounts["ca"] != "/external-ca" ||
-		mounts["config"] != "/bootstrap" {
+	if mounts["admin"] != "/bootstrap-admin" || mounts["seed"] != "/identity-seed" ||
+		mounts["ca"] != "/external-ca" || len(mounts) != 3 {
 		t.Errorf("external bootstrap mounts do not match the config directories")
 	}
 	for _, volume := range sliceMaps(podSpec(job)["volumes"]) {

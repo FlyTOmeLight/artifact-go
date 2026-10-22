@@ -6,7 +6,7 @@
 
 安装包应已包含固定版本依赖和镜像。构建者从源码执行 `helm dependency build charts/forge`、`helm package charts/forge`；安装者只需 chart 包，不需要 sibling 仓库、Python 或 kubectl 初始化脚本。
 
-公开配置见 `values-orbstack.yaml`。另需外部 Casdoor/GitLab 的管理员授权及 issuer CA，不能通过生成随机字符串替代：
+公开配置见 `values-orbstack.yaml`。`global.forge.tenantImage` 为 Tenant 服务与初始化 Job 指定同一个镜像，镜像须同时包含 `/forge` 和 `/forge-init`。另需外部 Casdoor/GitLab 的管理员授权及 issuer CA，不能通过生成随机字符串替代：
 
 - `global.forge.external.caPEM`：真实外部证书信任链。
 - `bootstrap.authorization.casdoorClientID`、`casdoorClientSecret`：可注册 Forge 应用和用户的外部管理客户端。
@@ -47,7 +47,9 @@ OrbStack 默认浏览器入口为 `http://127.0.0.1:8483`，S3 客户端入口�
 - Tenant 复用已有 migrate/bootstrap，并注册预生成服务 key。Artifact 用独立 migrate initContainer 建两个域的 schema，正常运行保持 `AutoMigrate=false`。
 - JuiceFS 使用 Redis AOF 与对象目录所在的持久卷；只对空元数据库初始化，已有 metadata 不重置。
 - STS issuer 是普通 IAM 用户，具有明确基础 policy；root 只用于初始化和桶管理，不直接签发客户端 STS。
-- 外部初始化使用普通 Job，不是 Helm hook。只有它能 get/patch 一个指定的输出 Secret；不具备读写其他 Secret 的权限。调用方通过 Secret volume 等待完整状态，再启动主进程。
+- `forge-tenant-init` 子 chart 提供外部初始化普通 Job，执行 `/forge-init external-bootstrap`，预算为 300 秒。它读取镜像内 `conf/server/config.toml`，复用服务地址与 CA，`[Bootstrap]` 仅接收证书名、初始账号、邮箱和 PAT 到期日。namespace/release 由 Pod/Helm 注入，目录和资源名由程序约定。
+- 初始化 Job 仅能 get/patch 一个指定的输出 Secret；API/worker 无 Kubernetes 写权限。业务 Pod 先执行 `/forge-init wait-external`，通过 Secret volume 等待完整凭据，再依次迁移、登记服务 key 和 bootstrap。普通 Job 与这些 initContainer 共同保证顺序，避免 post-install hook 与 `helm --wait` 互等。
+- 升级时已有完整凭据可直接复用；`--wait-for-jobs` 确保 Helm 等待本次初始化 Job 成功。初始化管理员输入只挂到 Job，生成的运行时 GitLab PAT 仍保留现有管理员权限。
 - 外部专用应用使用稳定名称；已有有效 PAT 沿用。丢失一次性签发结果时先定位并撤销本轮孤儿 PAT，再重新签发，不无限重试。
 
 数据 PVC 与关联 seed/证书/凭据均保留。`helm uninstall` 不表示清空数据或撤销外部集成；同 release 重装应复用保留的材料。缺 seed 却存在旧卷时安装失败，不能用新密码接管旧数据。删除 namespace 会连同保留资源一起删除，属于明确的重置操作。

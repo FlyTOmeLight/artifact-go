@@ -1,6 +1,10 @@
 global:
   forge:
     enabled: true
+    tenantImage:
+      repository: forge-tenant-api
+      tag: ""
+      pullPolicy: IfNotPresent
     publicURL: ""
     # Must be reachable by upload/download clients and the artifact Pod.
     storageEndpoint: ""
@@ -27,7 +31,6 @@ bootstrap:
     casdoorClientID: ""
     casdoorClientSecret: ""
     gitlabToken: ""
-  timeoutSeconds: 300
 artifact:
   image:
     repository: artifact-go
@@ -44,10 +47,6 @@ artifact:
     storageClass: local-path
     size: 1Gi
 tenant:
-  image:
-    repository: forge-tenant-api
-    tag: ""
-    pullPolicy: IfNotPresent
   api:
     replicas: 1
   worker:

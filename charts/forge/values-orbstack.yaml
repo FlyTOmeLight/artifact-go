@@ -1,6 +1,9 @@
 # Public settings only. Supply the external CA and bootstrap authorization separately.
 global:
   forge:
+    tenantImage:
+      tag: forge-review-20261022-init
+      pullPolicy: Never
     publicURL: http://127.0.0.1:8483
     # Artifact's local S3 proxy preserves this Host for signing; clients use a port-forward.
     storageEndpoint: http://127.0.0.1:19010
@@ -24,10 +27,6 @@ artifact:
     storageImage:
       tag: helm-init-20261020
       pullPolicy: Never
-tenant:
-  image:
-    tag: forge-review-20261022
-    pullPolicy: Never
 web:
   image:
     tag: forge-review-20261022
