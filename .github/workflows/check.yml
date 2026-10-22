@@ -32,4 +32,5 @@ jobs:
       - name: Verify module metadata
         run: |
           go mod tidy
-          git diff --exit-code -- go.mod go.sum
+          go -C cmd/storage-bootstrap mod tidy
+          git diff --exit-code -- go.mod go.sum cmd/storage-bootstrap/go.mod cmd/storage-bootstrap/go.sum

@@ -1,6 +1,6 @@
 # Artifact / storage 交付与运行
 
-本镜像提供通用服务、可选 Forge 服务和维护三条二进制。Forge 入口已有 session 与 active 租户成员接入，需配置并部署配套的新 tenant scope 接口；本机部署已升级并完成真实登录和文件联调，重部署入口见 [Forge 本机部署](../forge/README.md)；生产身份接入另行验收。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
+本镜像提供通用服务、可选 Forge 服务和维护命令三条二进制。Forge 入口已有 session 与 active 租户成员接入，需配置并部署配套的新 tenant scope 接口；本机部署已升级并完成真实登录和文件联调，重部署入口见 [Forge 本机部署](../forge/README.md)；生产身份接入另行验收。`cmd/server` 使用 `service.Build`；它因缺少 `IdentityResolver` 明确退出。不能通过读取普通请求 Header、自报 tenant/project 或把上游 403 解释为历史 deleted 状态来绕过这个边界。
 
 ## 构建及身份装配
 
@@ -19,7 +19,7 @@ docker run --rm --entrypoint /usr/local/bin/artifact-maintenance artifact-go:loc
 
 `IdentityResolver` 必须验证本次调用身份及精确租户/项目归属，返回可信 UserID、TenantID、可选 ProjectID、归属 active/deleted。历史读取和成功请求确认需要可信历史归属；查不到或拒绝访问不能自行转换成 deleted。`TenantServiceVerifier` 仅验证租户系统的 bucket 管理身份，与普通用户身份分开。
 
-配置字段的完整可运行语法以 [conf/server/config.toml](../../conf/server/config.toml) 为准。完整服务使用 DB/Version/Worker 和 StorageDB/Storage/StorageFiles/StorageWorker/StorageGrants，`StorageConsumerID` 指定持久引用归属。`AutoMigrate=false` 为默认值；首期新库首次初始化须由受控启动显式启用，完成后关闭，不把多副本同时启动当作生产迁移方案。MySQL 使用 UTC 与 parseTime；连接池每域独立配置。
+配置字段的完整可运行语法以 [conf/server/config.toml](../../conf/server/config.toml) 为准。完整服务使用 DB/Version/Worker 和 StorageDB/Storage/StorageFiles/StorageWorker/StorageGrants，`StorageConsumerID` 指定持久引用归属。通用配置默认 `AutoMigrate=false`；Forge 部署将 `DB.AutoMigrate` 与 `StorageDB.AutoMigrate` 均设为 `true`，由服务启动时的 `service.New` 和 `service.NewStorage` 执行 GORM AutoMigrate，保留当前 schema 的外键约束。Artifact/Storage 不提供独立迁移命令，也不使用 migrate initContainer；`storage-iam` initContainer 继续负责 JuiceFS IAM 初始化。MySQL 使用 UTC 与 parseTime；连接池每域独立配置。
 
 ## Forge session 入口
 
@@ -46,7 +46,7 @@ Timeout = "15s"
 
 公开 HTTP 由接入层保护并终止 TLS，容器部署将公开监听地址配置为 `0.0.0.0:<port>`。文件引用不再有独立 HTTP 端口、内部 TLS 或服务 token。健康检查使用部署已有的进程/端口探测。
 
-`StorageConsumerID` 是数据库中持久引用的归属标识，启用 StorageDB 时必填、无默认值，非空且至多 64 字节，在构造时固定；它不是认证凭据。升级现有部署必须保留旧值（OrbStack 为 `artifact-orbstack`），避免已有引用无法查询或释放。用户精确 scope 检查仍在公开入口和文件绑定事务中执行。
+`StorageConsumerID` 是数据库中持久引用的归属标识，启用 StorageDB 时必填、无默认值，非空且至多 64 字节，在构造时固定；它不是认证凭据。升级现有部署必须保留该部署的既有值，避免已有引用无法查询或释放；当前 OrbStack 的配置入口见 [Forge umbrella chart](../../charts/forge/README.md)。用户精确 scope 检查仍在公开入口和文件绑定事务中执行。
 
 对外调用 tenant API 的服务凭据、租户 bucket 管理凭据以及 S3/STS 密钥仍由部署环境管理。配置在构造时加载，轮换后需滚动重启；TLS 证书更换仍须确认对应客户端的信任链。
 
@@ -93,7 +93,7 @@ artifact-maintenance -domain artifact -db-config /run/secrets/artifact-db.json \
 
 ## 备份与恢复边界
 
-需备份四部分：artifact 主库全部表（包括成功回执、ReferenceChange、BackgroundTask）；storage 主库全部表（含 StorageReference 墓碑、StorageTask 和写授权上界）；JuiceFS 元数据；JuiceFS 实际对象数据及必要 IAM/配置密钥。单备份文件字节、单个 PVC 或只导出业务可见版本都不足以恢复引用协议。当前 OrbStack Redis 元数据与本地对象目录的布局见 [storage/orbstack.yaml](../storage/orbstack.yaml)；10 GiB PVC 请求不等于独立 SSD 配额或已验证容灾能力。
+需备份四部分：artifact 主库全部表（包括成功回执、ReferenceChange、BackgroundTask）；storage 主库全部表（含 StorageReference 墓碑、StorageTask 和写授权上界）；JuiceFS 元数据；JuiceFS 实际对象数据及必要 IAM/配置密钥。单备份文件字节、单个 PVC 或只导出业务可见版本都不足以恢复引用协议。当前 OrbStack 的 JuiceFS 元数据与对象目录在同一个持久卷上，布局见 [charts/juicefs/templates/deployment.yaml](../../charts/juicefs/templates/deployment.yaml)；PVC 请求大小（10 GiB）不等于独立 SSD 配额或已验证容灾能力。
 
 首期建议维护窗口协调快照：停止新业务写入及新授权，等待已发写凭据上界和活动请求结束，停止服务内两域 worker 与 JuiceFS 写入后，对上述各层记录同一恢复点。数据库和 JuiceFS 各用其存储设施支持的备份方式；文档不把文件系统在线复制当一致备份。若需要在线 PITR，必须另外设计并演练跨层恢复点。
 

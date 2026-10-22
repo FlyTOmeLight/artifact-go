@@ -1,0 +1,18 @@
+dependencies:
+- name: artifact
+  repository: file://../artifact
+  version: 0.4.0
+- name: forge-tenant
+  repository: file://../../../forge-tenant-api/charts/forge-tenant
+  version: 0.11.0
+- name: forge-tenant-init
+  repository: file://../../../forge-tenant-api/charts/forge-tenant-init
+  version: 0.1.0
+- name: forge-tenant-web
+  repository: file://../../../forge-tenant-web/charts/forge-tenant-web
+  version: 0.3.0
+- name: juicefs
+  repository: file://../juicefs
+  version: 0.1.0
+digest: sha256:dc2bf75c815a9695df792763ab0d563ab5a2c970eea832a98cc45f9c0e57561c
+generated: "2026-10-22T23:38:33.986077+08:00"

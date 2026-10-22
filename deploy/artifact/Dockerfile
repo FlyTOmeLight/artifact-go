@@ -16,6 +16,23 @@ RUN go build -trimpath -o /out/artifact-server ./cmd/server \
  && go build -trimpath -o /out/artifact-maintenance ./cmd/maintenance \
  && mkdir -p /out/logs /out/tmp
 
+FROM golang:1.27.1-bookworm@sha256:8d48e12ec56735e9358640898b9d9b9fcca110612ed8a5567438c0a1baa24e66 AS storage-bootstrap-build
+WORKDIR /src
+ENV GOWORK=off CGO_ENABLED=0
+ARG GOPROXY=https://proxy.golang.org,direct
+COPY cmd/storage-bootstrap/go.mod cmd/storage-bootstrap/go.sum ./
+RUN GOPROXY="${GOPROXY}" go mod download
+COPY cmd/storage-bootstrap ./
+RUN go build -trimpath -o /out/artifact-storage-bootstrap .
+
+# This optional image contains the AGPL-3.0 madmin-go IAM administration dependency.
+# Build explicitly with --target storage-bootstrap; the service runtime excludes it.
+FROM scratch AS storage-bootstrap
+COPY --from=storage-bootstrap-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=storage-bootstrap-build /out/artifact-storage-bootstrap /usr/local/bin/artifact-storage-bootstrap
+USER 65532:65532
+ENTRYPOINT ["/usr/local/bin/artifact-storage-bootstrap"]
+
 FROM scratch AS runtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo

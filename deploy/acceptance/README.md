@@ -18,12 +18,24 @@ JuiceFS 部分以 8 个不同的 1 MiB 对象、并发 4 测量本机小样本�
 
 四层联合恢复另运行 `python3 deploy/acceptance/four_layer.py`。它在同一冻结点备份两业务数据库、JuiceFS 元数据与对象，恢复到全新资源后核对原版本和字节，再由真实 worker 继续删除义务。范围与实测结果见 [2026-10-16 记录](../../docs/four-layer-recovery-20261016.md)；不是默认 CI 或容量测试。
 
-真实登录与重启回归使用 `forge-redeploy.cjs`，需要本机 tenant-web 的 Playwright、Chrome、既有隔离环境和 S3 端口转发。默认从 tenant-api 的私有 `.local/deployment.json` 读取登录配置，测试 scope 使用本目录 `forge-scope.json`。凭据只在内存使用，会话在结束时登出；报告只保存公开测试对象 ID。
+真实登录与重启回归使用 `forge-redeploy.cjs`，需要本机 tenant-web 的 Playwright、Chrome、既有隔离环境和 S3 端口转发。必须显式通过 `FORGE_CONFIG` 指定登录配置，或用 `FORGE_CONFIG_STDIN=1` 从 stdin 读取 JSON（含 `publicURL`、`adminUsername`、`adminPassword`）；不会自动读取旧 `.local` 缓存。scope 可放在登录配置的 `scope: {TenantID, ProjectID}`，或用 `FORGE_TEST_SCOPE` 指定公开 scope JSON；租户 ID 必须是 `t_`，项目 ID 必须是 `p_`。重启默认目标为 context `orbstack`、namespace `forge`、Deployment `forge-artifact`，分别通过 `FORGE_KUBE_CONTEXT`、`FORGE_NAMESPACE`、`FORGE_ARTIFACT_DEPLOYMENT` 覆盖。脚本通过真实 Casdoor 登录和 `/api/v1/me` 的 `user.id` 选择个人资源。会话与 STS 凭据仅在内存中使用，结束时登出；报告只保存本轮公开对象 ID。
 
 ```sh
-# 首次不带 --verify，创建专用验收文件及版本；后续复用同一报告。
+# 首次运行，创建四种scope的专用数据、删除样例和个人引用释放任务。
+FORGE_CONFIG=/path/to/restricted-login.json FORGE_TEST_SCOPE=/path/to/scope.json \
+FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/inprocess-acceptance.json" \
+  node deploy/acceptance/forge-redeploy.cjs
+
+# 部署重启后复用同一报告核对四种scope、worker删除样例和引用释放。
+FORGE_CONFIG=/path/to/restricted-login.json FORGE_TEST_SCOPE=/path/to/scope.json \
 FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/inprocess-acceptance.json" \
   node deploy/acceptance/forge-redeploy.cjs --verify --restart
 ```
 
-`--restart` 明确重启 orbstack / forge-tenant-split 中的 artifact Deployment，等 rollout 就绪后立即真实登录、回读版本、请求下载授权、校验原文件字节，并验证删除状态及权限拒绝。请求失败直接退出，不重试。`FORGE_DIAGNOSTICS=1` 仅输出路径、状态、耗时和分类错误，不输出响应内容、会话或临时凭据。
+每种 scope 都执行文件 register、STS PUT、Complete、版本或草稿发布、Resolve 和 STS GET 字节核对；跨范围拒绝逐项检查。完整 requestKey 并发矩阵复用 `TestCollectionCreateIdempotency`。
+
+引用释放按服务端回执推进：删除共享引用版本后重启 artifact，轮询同一版本的 DELETE 回执，直到返回 `deleted`，再核对末引用版本仍可读且能取回原始字节。随后删除末引用版本，轮询存储文件直到 `deleted`。每次轮询有独立的 20 分钟期限。
+
+上传授权回收使用未绑定的删除样例，按服务实际签发的 `expiresAt` 检查。当前 STS 要求至少 900 秒加签发余量，因此采用 chart 配置的 16 分钟授权。删除后立即开始轮询：授权未到期时必须保持 `deleting`，到期后等待 `deleted`。报告分别保存到期前保护状态和删除状态的观察时间；轮询不能给出精确物理删除时刻。如果中断导致没有观察到到期前状态，续跑不会将该项判为通过。
+
+脚本在创建任何资源前先写入报告身份，之后每完成一个阶段单独保存（`0600`），不会覆盖已有报告。创建阶段中断的报告标记为 `creating`，不能用 `--verify` 续建，需先核查该次创建的资源；报告并非每次 API 写入的完整日志。资源创建完成后，`--verify` 可继续删除及引用释放检查，不沿用上次运行的截止时间；已完成的引用释放仍查询文件是否保持 `deleted`。旧报告缺少四类 scope、上传授权或引用释放阶段证据时拒绝复验，不能用旧版 `completed` 标记证明新版检查通过。`--restart` 在登录和创建资源之后、开始核对之前重启一次 Artifact；重启流程等待旧 Pod 删除，STS 传输前有界等待 S3 入口返回匿名拒绝，避免转发仍连接旧 Pod 时立即读文件。引用释放流程本身在首次删除版本后还会再重启一次，用来检查待处理任务跨重启仍会完成。失败日志仅含阶段、状态和公开 file ID，不打印 session、token 或 STS 凭据。

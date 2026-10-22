@@ -1,0 +1,45 @@
+# Native sidecars require Kubernetes >=1.29 with SidecarContainers enabled.
+global:
+  forge:
+    enabled: false
+
+# Defaults to <release>-juicefs, including when used by the Forge parent chart.
+fullnameOverride: ""
+
+# Built with deploy/storage/Dockerfile.juicefs.
+image:
+  repository: artifact-juicefs
+  tag: 1.4.1-arm64
+  pullPolicy: Never
+
+redis:
+  image:
+    repository: redis
+    tag: 7.4.2-alpine
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+persistence:
+  # Set this when the parent chart owns the PVC. Otherwise create a kept PVC
+  # named after fullname. Metadata, file objects and cache share this one PVC.
+  existingClaim: ""
+  storageClass: local-path
+  size: 10Gi
+
+credentials:
+  # Existing Secret with MINIO_ROOT_USER and MINIO_ROOT_PASSWORD keys.
+  # Never created here. Default: <fullname>-credentials; Forge mode defaults
+  # to <release>-storage-credentials, owned and kept by the parent chart.
+  existingSecret: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi

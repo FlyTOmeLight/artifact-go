@@ -1,37 +1,41 @@
-# Forge OrbStack 接入与验收
+# Forge 部署与验收
 
-Artifact 的部署源在 [charts/artifact](../../charts/artifact/README.md)，实际公开配置在 `charts/artifact/values-orbstack.yaml`。日常部署直接使用 Helm。
+Forge 的全部部署资源由一个 umbrella chart 提供：[charts/forge](../../charts/forge/README.md)。安装、升级、凭据与证书生命周期、初始化顺序都以该 chart 的 README 为准；本文件只说明 OrbStack 上如何访问和验收。
 
-## 部署归属
+原独立应用与共享存储环境已在 2026-10-22 退役，相关 namespace、独立 release、JuiceFS 和 Secret 已删除，旧部署输入与脚本已移除。当前 Forge 部署为 namespace `forge` 中的 release `forge`。
 
-三个服务各自维护 chart、环境 values 和独立 Helm release：
-
-- artifact-go：`charts/artifact`，release `artifact`。
-- forge-tenant-api：`charts/forge-tenant`，release `forge-tenant`；TLS 和 Storage worker 配置由该仓库维护。
-- forge-tenant-web：`charts/forge-tenant-web`，release `forge-tenant-web`；同源代理路由由该仓库维护。
-
-各仓库的 `values-orbstack.yaml` 和 chart README 提供各自的部署命令。Artifact 部署无需其他仓库的目录或源码。目前不需要联合发布，因此不引入 umbrella chart，也不在本仓脚本中升级其他服务。以后若需联合发布，应由上层 chart 声明版本化依赖。
-
-当前 namespace 为 `forge-tenant-split`。共享 JuiceFS 位于 `artifact-storage`；保留其 Deployment `storage`、Service `juicefs` 和 PVC `storage-data`。
-
-## 已有凭据
-
-现有 `artifact-runtime-credentials`、`artifact-integration-tls`、`artifact-integration-db`、`artifact-integration-db-init` 继续使用。私有备份位于 Git 忽略的 `.scratch/forge-orbstack/private/`。内部引用交接 token 已不再需要；数据库、S3 和 tenant 接入身份继续使用。
-
-## 本机验收
+## 访问
 
 ```sh
-kubectl --context=orbstack -n forge-tenant-split port-forward svc/forge-tenant-web 8483:80
-kubectl --context=orbstack -n artifact-storage port-forward svc/juicefs 19010:9000
+kubectl --context=orbstack -n forge port-forward svc/forge-web 8483:80
+# 引用释放验收会重启 Artifact；转发退出后重新选择就绪 Pod。
+while true; do
+  kubectl --context=orbstack -n forge port-forward deployment/forge-artifact 19010:19010
+  sleep 1
+done
 ```
 
-两个转发分别保持运行。Forge 登录 Origin 为 `http://127.0.0.1:8483`；metadata 走 `/artifact` 和 `/storage`，客户端 S3 直传走 `http://127.0.0.1:19010`。用户身份与 tenant/project scope 仍由 tenant API 核实；进程内文件引用按请求 scope 查询。验收对象来自 `deploy/acceptance/forge-scope.json`，它只是测试输入。artifact 与 storage SDK 使用 server-go 定义的 `x-forge-tenant-id` / `x-forge-project-id` 选择范围；tenant API 必须部署包含 `/internal/v1/scope/resolve` 且响应带 `principal` 的版本。STS issuer 的 bucket 基础权限不变。
+Forge 登录 Origin 为 `http://127.0.0.1:8483`；metadata 走 `/artifact` 和 `/storage`，客户端 S3 直传走 `http://127.0.0.1:19010`。S3 Host 参与签名，端口转发必须保留 Host。Artifact Pod 内部的 19010 代理指向同一 JuiceFS gateway，不需要额外转发。
 
-验收工具允许通过 `FORGE_WEB_ROOT` 和 `FORGE_CONFIG` 指定浏览器依赖与私有登录配置路径；它们只用于测试，不是部署依赖。保留已有版本的验证命令：
+浏览器登录还要求 OIDC issuer 从发起登录的浏览器可达。使用 `tenant-lab` 的集群内 issuer 时，本机 Chrome 无法直接访问，需要 ingress/LoadBalancer 或在集群网络内的机器上打开登录页。
+
+## 验收
 
 ```sh
-FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/redeploy-acceptance.json" \
-  node deploy/acceptance/forge-redeploy.cjs --verify
+FORGE_CONFIG=/path/to/restricted-login.json \
+FORGE_TEST_SCOPE=/path/to/scope.json \
+FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/forge-redeploy-report.json" \
+  node deploy/acceptance/forge-redeploy.cjs
+
+# 重启后复用报告核对同一批对象
+FORGE_CONFIG=/path/to/restricted-login.json \
+FORGE_TEST_SCOPE=/path/to/scope.json \
+FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/forge-redeploy-report.json" \
+  node deploy/acceptance/forge-redeploy.cjs --verify --restart
 ```
 
-旧 `forge-login.cjs prepare` 创建新租户，不适用于当前固定文件 scope。验收与退役结果见 [验收记录](../../docs/deployment-consolidation-20261016.md)。旧六个 Deployment/Service 已退役；原 PVC、Secrets、双库 dump 和恢复清单保留在私有 `retired-backup/`，详见[审计记录](../../docs/old-deployment-audit-20261016.md)。
+`FORGE_CONFIG` 必填，包含 `publicURL`、`adminUsername`、`adminPassword`；也可用 `FORGE_CONFIG_STDIN=1` 从 stdin 读取。scope 必填：写在登录配置的 `scope: {TenantID, ProjectID}`，或用 `FORGE_TEST_SCOPE` 指定 scope JSON。租户 ID 必须是 `t_`，项目 ID 必须是 `p_`。脚本不会读取旧 `.local` 缓存或既有的 Secret。
+
+重启默认目标为 context `orbstack`、namespace `forge`、Deployment `forge-artifact`，可用 `FORGE_KUBE_CONTEXT`、`FORGE_NAMESPACE`、`FORGE_ARTIFACT_DEPLOYMENT` 覆盖。浏览器依赖默认取 `../forge-tenant-web/node_modules/playwright`，可用 `FORGE_WEB_ROOT` 指定其他位置。
+
+脚本覆盖的内容、阶段持久化和等待逻辑见 [验收说明](../acceptance/README.md)；2026-10-21/22 的真实安装与验收结果见 [验收记录](../../docs/orbstack-rebuild-acceptance-20261020.md)。

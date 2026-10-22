@@ -1,15 +1,56 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-runtime
+  name: {{ include "artifact.fullname" . }}-runtime
 data:
   config.json: |
+    {{- if include "artifact.forgeEnabled" . }}
+    {{- $db := dict "Driver" "PostgreSQL" "DSN" "${env:ARTIFACT_DATABASE_URL}" "AutoMigrate" true }}
+    {{- $storageDB := dict "Driver" "PostgreSQL" "DSN" "${env:STORAGE_DATABASE_URL}" "AutoMigrate" true }}
+    {{- $issuer := dict "Endpoint" .Values.global.forge.storageEndpoint "AccessKeyID" "${env:STS_ACCESS_KEY_ID}" "SecretAccessKey" "${env:STS_SECRET_ACCESS_KEY}" }}
+    {{- $storage := dict "BackendID" (printf "%s-juicefs" .Release.Name) "Endpoint" .Values.global.forge.storageEndpoint "Region" "us-east-1" "AccessKeyID" "${env:S3_ACCESS_KEY_ID}" "SecretAccessKey" "${env:S3_SECRET_ACCESS_KEY}" "UsePathStyle" true "GrantIssuer" $issuer }}
+    {{- $tenant := dict "Endpoint" (printf "https://%s-tenant.%s.svc:8443" .Release.Name .Release.Namespace) "ServiceToken" "${env:TENANT_SERVICE_TOKEN}" }}
+    {{- dict "AppName" "artifact-forge" "AppCode" 100 "RunMode" "release" "HTTPServer" (dict "Listen" "0.0.0.0:18080" "ReadTimeout" 10000 "WriteTimeout" 30000) "DB" $db "StorageDB" $storageDB "Storage" $storage "ForgeTenant" $tenant "TenantManagement" (dict "Tokens" (list "${env:TENANT_MANAGEMENT_TOKEN}")) "StorageConsumerID" (printf "%s-%s" .Release.Namespace .Release.Name) "StorageFiles" (dict "MaxFileBytes" 1073741824 "TemporaryFileTTL" "24h" "MaxRequestBodyBytes" 8388608) "StorageWorker" (dict "Concurrency" 2 "ScanInterval" "5s" "LeaseDuration" "60s" "RenewInterval" "15s" "SweepInterval" "1h" "MaxFailures" 20) "StorageGrants" (dict "UploadTTL" "16m" "ReadTTL" "16m" "AllowedActions" (list "s3:PutObject" "s3:GetObject" "s3:ListMultipartUploadParts" "s3:AbortMultipartUpload")) | toPrettyJson | nindent 4 }}
+    {{- else }}
     {{- required "config is required" .Values.config | toPrettyJson | nindent 4 }}
+    {{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-integration-nginx
+  name: {{ include "artifact.fullname" . }}-integration-nginx
 data:
   nginx.conf: |
+    {{- if include "artifact.forgeEnabled" . }}
+    pid /tmp/nginx.pid;
+    events {}
+    http {
+      access_log off;
+      error_log /dev/stderr warn;
+      client_body_temp_path /tmp/client;
+      proxy_temp_path /tmp/proxy;
+      server {
+        listen 8443 ssl;
+        ssl_certificate /tls/artifact.crt;
+        ssl_certificate_key /tls/artifact.key;
+        client_max_body_size 8m;
+        location / {
+          proxy_pass http://127.0.0.1:18080;
+          proxy_set_header Host $http_host;
+          proxy_read_timeout 60s;
+        }
+      }
+      server {
+        listen 19010;
+        client_max_body_size 0;
+        location / {
+          proxy_pass http://{{ .Release.Name }}-juicefs:9000;
+          proxy_set_header Host $http_host;
+          proxy_request_buffering off;
+          proxy_read_timeout 3600s;
+        }
+      }
+    }
+    {{- else }}
     {{- required "nginxConfig is required" .Values.nginxConfig | nindent 4 }}
+    {{- end }}

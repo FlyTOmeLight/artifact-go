@@ -2,22 +2,24 @@
 
 审计时间：2026-10-16 22:56（Asia/Shanghai）。context：`orbstack`。本次仅查询资源、配置引用和数据库，没有修改或删除集群资源，不含凭据。
 
-## 结论
+> 历史记录：本文比较的两套环境均已于 2026-10-22 退役。以下资源保留要求和审计结论只描述 2026-10-16 的阶段状态，不再是当前运维指令；最终清理见 [新部署验收记录](orbstack-rebuild-acceptance-20261020.md)。
 
-**初次只读审计时不能直接删除旧链路；后续正常 API 回收及双库恢复验证已完成，详见文末。** 新前端已经使用 `forge-tenant-split/artifact`，但旧 storage 库仍持有一条尚未到期的上传准备记录，且旧库中有未迁移的 JSON 验收数据。应保留旧服务履行回收义务，或另行验证能够承接该义务的维护方案；不得为清理实例直接改数据库期限。
+## 当时结论
 
-## 当前流量及引用
+**初次只读审计时不能直接删除旧链路；后续正常 API 回收及双库恢复验证已完成，详见文末。** 新前端已经使用 已退役独立应用环境的 `artifact`，但旧 storage 库仍持有一条尚未到期的上传准备记录，且旧库中有未迁移的 JSON 验收数据。应保留旧服务履行回收义务，或另行验证能够承接该义务的维护方案；不得为清理实例直接改数据库期限。
 
-- 前端实际 `forge-tenant-web-nginx/default.conf` 的 `/artifact/v1/` 和 `/storage/v1/` 都代理到 `http://artifact/v1/`，新入口位于 `forge-tenant-split`。
-- 新 artifact 的 Forge scope resolver 指向 `https://forge-tenant.forge-tenant-split.svc.cluster.local:8443`，不依赖单独的 `forge-tenant-tls`。
+## 当时流量及引用
+
+- 前端实际 `forge-tenant-web-nginx/default.conf` 的 `/artifact/v1/` 和 `/storage/v1/` 都代理到 `http://artifact/v1/`，当时新入口位于现已退役的独立应用环境。
+- 新 artifact 的 Forge scope resolver 指向已退役独立应用环境的 tenant HTTPS 服务（8443 端口），不依赖单独的 `forge-tenant-tls`。
 - tenant worker 的 envFrom 顺序为 `forge-tenant-env`、`tenant-storage-integration`，后者把 STORAGE_URL 覆盖到新 artifact TLS 地址。
 - tenant API 仍只读取 `forge-tenant-env`，其中 STORAGE_URL 保留旧 artifact 地址。即使 API 不运行 bucket worker，也应在确认新配置持久化后修正这条陈旧引用。
-- 旧 artifact resolver 依赖 `forge-tenant-split/forge-tenant-tls`；旧 artifact 使用 `artifact-storage/artifact-forge-postgres`。两者构成仍在运行的旧链路。
+- 旧 artifact resolver 依赖 已退役独立应用环境的 `forge-tenant-tls`；旧 artifact 使用 `artifact-storage/artifact-forge-postgres`。两者构成仍在运行的旧链路。
 - 旧服务仍有各 2 条 artifact/storage 数据库连接。没有将历史 last-applied 注解中的旧字符串认定为当前真实流量。
 
 ## 两套元数据快照
 
-| 数据 | 旧 artifact-storage/artifact-forge-postgres | 新 forge-tenant-split/artifact-postgres |
+| 数据 | 旧 artifact-storage/artifact-forge-postgres | 当时新库 artifact-postgres（环境已退役） |
 | --- | --- | --- |
 | artifacts | 4 active | 2 archived |
 | versions | 4 ready | 3 deleted |
@@ -39,12 +41,12 @@
 
 - `artifact-storage`: Deployment/Service `artifact-forge`。
 - `artifact-storage`: Deployment/Service `artifact-forge-postgres`。
-- `forge-tenant-split`: Deployment/Service `forge-tenant-tls`（必须先确认没有旧 artifact resolver 继续调用）。
+- 已退役独立应用环境：Deployment/Service `forge-tenant-tls`（当时须先确认没有旧 artifact resolver 继续调用）。
 
 不在删除范围：
 
 - PVC `artifact-storage/artifact-forge-postgres`，以及相关 Secret `artifact-forge-postgres`、`artifact-forge-config`、`artifact-forge-tls`。
-- Secret `forge-tenant-split/forge-tenant-tls-tls`，在回退保留期内保留。
+- 已退役独立应用环境的 Secret `forge-tenant-tls-tls`，当时在回退保留期内保留。
 - 所有新 artifact、tenant、前端资源及 `artifact-integration-db` PVC。
 - `artifact-storage/storage`、Service `juicefs`、PVC `storage-data` 及其凭据。它们仍承载新服务使用的 JuiceFS 对象存储，绝不能随旧 artifact 清理。
 

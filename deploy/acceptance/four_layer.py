@@ -64,7 +64,7 @@ def main():
 
             def postgres(name):
                 instance = start(name, "postgres:17-alpine", port="5432", extra=("--env-file", str(private_env)))
-                wait(["docker", "exec", instance, "pg_isready", "-U", "postgres"])
+                wait(["docker", "exec", instance, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"])
                 for database in ("artifact", "storage"):
                     run("docker", "exec", instance, "createdb", "-U", "postgres", database, capture=True)
                 return instance

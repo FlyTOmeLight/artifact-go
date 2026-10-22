@@ -2,6 +2,14 @@ image:
   repository: artifact-go
   tag: ""
   pullPolicy: IfNotPresent
+fullnameOverride: ""
+initialization:
+  enabled: false
+  timeout: 2m
+  storageImage:
+    repository: artifact-go-storage-bootstrap
+    tag: ""
+    pullPolicy: IfNotPresent
 existingSecret: ""
 tlsSecret: ""
 proxyImage: nginx:1.28.0-alpine

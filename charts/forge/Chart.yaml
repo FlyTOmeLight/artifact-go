@@ -1,0 +1,24 @@
+apiVersion: v2
+name: forge
+description: Forge tenant, web, artifact and JuiceFS with managed initialization
+type: application
+version: 0.1.0
+dependencies:
+  - name: artifact
+    version: 0.4.0
+    repository: file://../artifact
+  - name: forge-tenant
+    alias: tenant
+    version: 0.11.0
+    repository: file://../../../forge-tenant-api/charts/forge-tenant
+  - name: forge-tenant-init
+    alias: bootstrap
+    version: 0.1.0
+    repository: file://../../../forge-tenant-api/charts/forge-tenant-init
+  - name: forge-tenant-web
+    alias: web
+    version: 0.3.0
+    repository: file://../../../forge-tenant-web/charts/forge-tenant-web
+  - name: juicefs
+    version: 0.1.0
+    repository: file://../juicefs

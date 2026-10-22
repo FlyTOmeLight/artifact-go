@@ -14,7 +14,7 @@ AWS 的 ListBuckets 定义为当前凭据所属账户拥有的 bucket 清单；H
 
 ## JuiceFS 归属语义及实测
 
-已部署的是 JuiceFS 1.4.1、多 bucket 模式，OrbStack 上原有 `artifact-storage` 环境。探针使用该 volume namespace 的管理身份，密钥从私有文件加载到进程环境，不写入仓库、命令参数或报告。
+当时部署的是 JuiceFS 1.4.1、多 bucket 模式，使用 OrbStack 上现已退役的独立存储环境。以下保留当时实测结果；当前部署见 [Forge 部署说明](../deploy/forge/README.md)。探针使用该 volume namespace 的管理身份，密钥从私有文件加载到进程环境，不写入仓库、命令参数或报告。
 
 JuiceFS 一个 volume 的顶层目录就是 bucket；它没有 AWS 式多个独立存储账户。IAM 用户是这个 namespace 中的授权主体，不是独立 bucket owner。其锁定的 MinIO ListBucketsHandler 在没有 ListAllMyBuckets 权限时，会按 ListBucket 权限过滤列表后返回。因此不能把“普通 IAM 用户在 JuiceFS 列表里看得到”描述为独立账户所有权证明。此实现要求为配置的 backend 提供该 namespace 的管理凭据；AWS 则按官方账户清单语义检查。生产若更换兼容后端，须验证相同账户清单语义。
 

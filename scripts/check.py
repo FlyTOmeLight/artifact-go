@@ -56,7 +56,10 @@ def main():
         run("go", "build", "-o", "bin/artifact-server", "./cmd/server")
         run("go", "build", "-o", "bin/artifact-forge-server", "./cmd/forge-server")
         run("go", "build", "-o", "bin/artifact-maintenance", "./cmd/maintenance")
-        print("PASS: HTTP/SDK and database checks, PostgreSQL + MySQL, paired database backup/restore, lifecycle, race, vet, build; external identity/JuiceFS probes reported separately")
+        run("go", "-C", "cmd/storage-bootstrap", "test", "-count=1", "-race", "-timeout=5m", "./...")
+        run("go", "-C", "cmd/storage-bootstrap", "vet", "./...")
+        run("go", "-C", "cmd/storage-bootstrap", "build", "-o", "../../bin/storage-bootstrap", ".")
+        print("PASS: HTTP/SDK and database checks, PostgreSQL + MySQL, paired database backup/restore, lifecycle, race, vet, build and storage-bootstrap CLI checks; external identity/JuiceFS probes reported separately")
     finally:
         for cid in reversed(containers):
             subprocess.run(["docker", "rm", "-f", cid], stdout=subprocess.DEVNULL, check=False)

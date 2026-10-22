@@ -2,6 +2,8 @@
 
 本次只运行存储验证探针，没有开始 artifact/storage 业务实现。后端为 OrbStack `artifact-storage` 中 JuiceFS 1.4.1、多 bucket 网关，客户端经 `127.0.0.1:19010` 访问。开始时端口转发已断开，本次恢复了转发；未修改部署参数、PVC 或现有 bucket。
 
+> 本文环境已于 2026-10-22 退役，以下端点与机器报告仅保留当时实测证据。当前安装与访问见 [Forge 部署说明](../../deploy/forge/README.md)。
+
 ## 结果与建议
 
 | 验证 | 结果 | 设计影响 |
@@ -37,18 +39,9 @@ DeleteObject 后 HEAD 404 只证明 S3 不再可见。当前 `--trash-days 1` �
 
 补测 upload/download 越 key/越 bucket 时，父 IAM 被允许读写两个测试 bucket 内本次随机前缀的实际对象；两个独立 session policy 各只含一个 key。授权 key 读写成功，其他 key/bucket 返回 AccessDenied，因此该补测明确验证了 session policy 收窄，而不仅是父 IAM 拒绝。主运行 upload 越 bucket 的父 IAM 本身也不允许该 bucket，其不足由此补测补齐。
 
-## 复跑
+## 历史探针说明
 
-探针需要已有 `artifact-data`、`artifact-models` 测试 bucket，以及本机 19010 端口转发。只创建带随机前缀的对象、临时普通 IAM 用户和 policy；finally 删除本次资源。凭据从现有 `/private/tmp/artifact-storage/credentials.env` 读取，仅用于进程内与辅助程序 stdin，不出现在报告或命令行参数中。
-
-```sh
-cd /Users/light/Code/artifact-go/scripts/juicefs-t00-admin
-GOWORK=off go build -o /private/tmp/artifact-t00-admin-helper .
-cd /Users/light/Code/artifact-go
-uv run --cache-dir /private/tmp/artifact-uv-cache scripts/verify_juicefs_t00.py \
-  --admin-helper /private/tmp/artifact-t00-admin-helper
-rm /private/tmp/artifact-t00-admin-helper
-```
+当时探针使用已有 `artifact-data`、`artifact-models` 测试 bucket、本机 19010 端口转发和私有凭据文件；只创建随机前缀对象、临时普通 IAM 用户和 policy，并在 finally 删除本次资源。环境退役后，旧凭据路径和复跑命令已移除；在其他环境运行须重新提供该环境的端点、测试范围和凭据；当前脚本要求用 `--credentials-file /path/to/credentials.env` 显式指定凭据文件，并用 `--admin-helper` 指定辅助程序。
 
 `scripts/juicefs-t00-admin` 是隔离的探针辅助模块，用官方 `madmin-go/v2 v2.2.1` 完成 IAM 创建、policy 绑定和删除；不是业务模块或生产依赖。Python 使用原验证工具相同的 boto3 1.43.113。首次运行可能需要下载工具依赖；完整运行至少等待 900 秒。
 
