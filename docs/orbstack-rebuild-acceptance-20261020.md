@@ -166,6 +166,55 @@ Web 镜像的全部 4 个业务静态文件与通过 fixture 测试的当前 `di
 
 本轮 1 个子代理完成补丁修正与隔离复验；真实暂存区保留原来的三个 storage 文件删除，其余未暂存。未提交、推送或创建 Git tag。
 
+## 2026-10-23 三仓合并版本升级与四范围验收（revision 10）
+
+三个仓库的部署相关 PR 合入后，从合并提交重新构建镜像并升级本机 OrbStack 的 `forge` release，完成真实登录、四种 scope 的读写隔离、重启持久性、引用释放和上传授权到期验收。
+
+### 提交与镜像
+
+| 仓库 | 合并提交 | 镜像 |
+| --- | --- | --- |
+| artifact-go（PR #6） | `6c8d51351cd0146fb6314fe50d7c34109f3e3b50` | `artifact-go:merged-6c8d513` |
+| forge-tenant-api（PR #5） | `d392dbdcbf3805b236980d59e4410dd3099ca4d8` | `forge-tenant-api:merged-d392dbd` |
+| forge-tenant-web（PR #3） | `5cbbfbaacddb560ea57b8fe18925f64467a28bea` | `forge-tenant-web:merged-5cbbfba` |
+
+三个镜像均从 detached 干净 worktree 的合并提交构建。前端原工作区有未提交功能改动，本轮没有修改、暂存或 stash 该工作区。
+
+### 升级结果
+
+- 升级前执行 `helm upgrade --dry-run=server --hide-secret`；随后 `helm upgrade forge ... --reset-values -f values-orbstack.yaml --wait --wait-for-jobs --timeout 10m` 成功，release `forge` 位于 `orbstack/forge`，revision 10，更新于 2026-10-23T03:14:30Z。
+- 外部初始化 Job `forge-external-bootstrap-10` 完成耗时 6 秒；租户 API/worker、Artifact、Web 均 Ready，运行镜像与上表一致。
+- Artifact 配置中 `DB.AutoMigrate` 与 `StorageDB.AutoMigrate` 均为 `true`，initContainer 仅有 `storage-iam`，不含独立 migrate 步骤。
+- 三块 PVC 保留且 UID 不变：`data-forge-tenant-postgres-0` `4e74f95d-00cb-42cf-8bc2-b3aafdc61a43`、`forge-artifact-data` `ac8b324a-d058-4eae-aa55-15b9fe5baa4d`、`forge-juicefs` `a56e541f-41cb-4a87-b473-da6cbd0528f5`。
+
+### 验收结果
+
+真实 Casdoor 登录在专用浏览器空间中完成，`/api/v1/me` 返回 200。随后对 `tenant-shared`、`tenant-personal`、`project-shared`、`project-personal` 四种 scope 逐个执行文件登记、STS PUT、Complete、发布版本、Resolve 和 STS GET，下载字节与上传一致；创建完成后先重启一次 Artifact 再做核对，四种 scope 的数据跨重启仍可读回。
+
+同时通过：
+
+- 共享引用版本删除后重启 Artifact，引用释放任务跨重启完成；末引用版本仍可读且能取回原始字节，删除末引用后文件最终 `deleted`。
+- 上传授权到期保护：授权签发后到期前文件保持 `deleting`，到期后变为 `deleted`。本轮观察时间为 `04:35:37Z`（到期前）与 `04:51:18Z`（到期后），授权到期时间 `04:51:07Z`。
+- 跨 scope 读取、Complete、签发授权和删除分别返回 404、404 + `FileNotFound`、404、404；Artifact 版本、draft、alias、retention 和 Resolve 在错误 scope 下返回 404 或 405。
+- 错误 CSRF 返回 403，非授权 Origin 返回 403，匿名请求返回 401。
+- `requestKey` 重放与参数冲突并发矩阵仍由 `TestCollectionCreateIdempotency` 覆盖，本轮不重复执行。
+
+公开对象 ID 供复查：tenant-shared `b4abbae9-0460-4cfe-80eb-096853ec7296`，tenant-personal `75817bd4-256d-4269-b101-2ac7498b8b93`，project-shared `878187cc-cc67-4dbc-9497-3742057555c4`，project-personal `0b0ed490-f985-459b-ab17-5a58e75e6f7d`，引用释放样例 `f06bc05b-7d0d-43c9-99b3-29f4285daa50`。
+
+验收报告与详细记录保存在被忽略的 `.scratch/forge-merged-20261023/`：`acceptance-report-3.json` 为通过报告（`verifiedAt` 2026-10-23T04:52:18Z），`deployment.json` 汇总 release、镜像、PVC 与验收结论。该目录不进入 Git。
+
+### 执行说明
+
+- 验收由 Ego Lite 浏览器驱动，复用 `deploy/acceptance/forge-redeploy.cjs` 与 `reference-release.cjs` 的操作序列（四 scope、STS、重启、授权到期保护），适配脚本位于上述 `.scratch` 目录；仓库内 `forge-redeploy.cjs` 仍是文档化的默认入口。
+- Ego Lite 的 Node 进程创建的可执行文件会带 `com.apple.quarantine`，启动即被 macOS `SIGKILL`。本轮改为在普通 shell 预构建 helper 二进制后供脚本调用；该问题不是服务端故障。
+- 前两次尝试都在第一个 STS PUT 失败，未产生通过报告：`acceptance-report.json`（03:28Z）与 `acceptance-report-2.json`（04:26Z）均为 `phase=creating`，另有首份报告的归档副本。第二次加入脱敏诊断后确认退出信号为 `SIGKILL`，即上述 quarantine 问题；第一次使用相同的进程内构建路径，但当时没有诊断输出，按同一原因推断，未单独证实。
+
+### 验证边界
+
+- 首次 rollout 的 Artifact Pod 从 `03:14:40Z` 到 Ready `03:14:47Z`，约 7 秒；最后一次重启从 `04:51:53Z` 到 `04:52:05Z`，约 12 秒。
+- 集群 Metrics API 不可用，`kubectl top pods` 失败，因此本轮没有 CPU、内存和容量数据，只有启动耗时观测。
+- 验收针对单节点 OrbStack 本地镜像，未推送到镜像仓库，也不代表多节点调度、生产容量或 RPO/RTO。本记录不含凭据、session、CSRF 或 STS 明文。
+
 ## 边界
 
 - 外部 Casdoor/GitLab 的集成对象在 Helm 卸载后仍存在；卸载不撤销它们。

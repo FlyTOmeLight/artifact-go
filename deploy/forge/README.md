@@ -38,4 +38,4 @@ FORGE_REDEPLOY_REPORT="$PWD/.scratch/forge-orbstack/forge-redeploy-report.json" 
 
 重启默认目标为 context `orbstack`、namespace `forge`、Deployment `forge-artifact`，可用 `FORGE_KUBE_CONTEXT`、`FORGE_NAMESPACE`、`FORGE_ARTIFACT_DEPLOYMENT` 覆盖。浏览器依赖默认取 `../forge-tenant-web/node_modules/playwright`，可用 `FORGE_WEB_ROOT` 指定其他位置。
 
-脚本覆盖的内容、阶段持久化和等待逻辑见 [验收说明](../acceptance/README.md)；2026-10-21/22 的真实安装与验收结果见 [验收记录](../../docs/orbstack-rebuild-acceptance-20261020.md)。
+脚本覆盖的内容、阶段持久化和等待逻辑见 [验收说明](../acceptance/README.md)；2026-10-21 至 10-23 的真实安装与验收结果见 [验收记录](../../docs/orbstack-rebuild-acceptance-20261020.md)。
