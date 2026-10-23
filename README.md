@@ -86,8 +86,11 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 })
 ```
 
+完整的接入手册见 [Go 客户端接入手册](docs/consumer-guide.md)：身份与范围、集合/版本/草稿/保留策略、文件登记到下载的完整链路、幂等与错误处理。
+
 ## 设计与进度
 
+- [Go 客户端接入手册](docs/consumer-guide.md)
 - [可选用户归属与集合幂等创建契约](docs/service-consumer-design-20261016.md)
 - [Issue #2 本地实现与双库验收](docs/user-ownership-acceptance-20261018.md)
 - [父Spec #1](https://github.com/FlyTOmeLight/artifact-go/issues/1)
