@@ -10,9 +10,9 @@ dependencies:
   version: 0.1.0
 - name: forge-tenant-web
   repository: file://../../../forge-tenant-web/charts/forge-tenant-web
-  version: 0.3.0
+  version: 0.3.1
 - name: juicefs
   repository: file://../juicefs
   version: 0.1.0
-digest: sha256:dc2bf75c815a9695df792763ab0d563ab5a2c970eea832a98cc45f9c0e57561c
-generated: "2026-10-22T23:38:33.986077+08:00"
+digest: sha256:5cf2a15a110ce222bd84804c688d2192bb3714759e8761f24c367a42e05b67c0
+generated: "2026-11-09T12:16:55.773737+08:00"

@@ -544,6 +544,9 @@ func assertWorkloadContract(t *testing.T, r rendered, release string) {
 		if nginx == "" {
 			t.Fatal("web nginx default.conf is missing or empty")
 		}
+		if !strings.Contains(nginx, "connect-src 'self' http://127.0.0.1:19010;") {
+			t.Errorf("web CSP does not allow the client storage endpoint")
+		}
 		for _, name := range []string{"Coding", "Agent"} {
 			if !strings.Contains(nginx, `return 404 '{"message":"`+name+` is disabled"}';`) {
 				t.Errorf("disabled %s route does not reject requests", name)
