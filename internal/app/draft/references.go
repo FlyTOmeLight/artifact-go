@@ -17,6 +17,7 @@ import (
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
@@ -233,7 +234,9 @@ func (s *Service) apply(
 					return e2
 				}
 				p.change = newChange(i, e, e.draftID, now)
-				p.change.State = "aborted"
+				if e2 = lifecycle.DecideReferenceChange(&p.change.State, "aborted"); e2 != nil {
+					return e2
+				}
 				if e2 = saveChange(tx, &p.change); e2 != nil {
 					return e2
 				}
@@ -339,7 +342,10 @@ func (s *Service) apply(
 					return
 				}
 				p.change = newChange(i, e, e.draftID, now)
-				p.change.State = "aborted"
+				if e2 = lifecycle.DecideReferenceChange(&p.change.State, "aborted"); e2 != nil {
+					decisionErr = e2
+					return
+				}
 				if e2 = saveChange(tx, &p.change); e2 != nil {
 					decisionErr = e2
 					return
@@ -516,6 +522,17 @@ func (s *Service) apply(
 }
 
 func saveChange(tx *db.DB, p *table.ReferenceChange) error {
+	var prior table.ReferenceChange
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("artifact_id = ? AND actor_id = ? AND operation_kind = ? AND request_key = ?",
+			p.ArtifactID, p.ActorID, p.OperationKind, p.RequestKey).
+		First(&prior).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	if err = lifecycle.ReferenceAttempt(prior.State, prior.AttemptID, p.AttemptID); err != nil {
+		return err
+	}
 	return tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "artifact_id"}, {Name: "actor_id"}, {Name: "operation_kind"}, {Name: "request_key"}}, DoUpdates: clause.AssignmentColumns([]string{"attempt_id", "state", "deadline", "plan", "draft_id", "applied_revision", "updated_at"})}).
 		Create(p).
 		Error
@@ -747,14 +764,19 @@ func (s *Service) finish(
 	}
 	if local {
 		p.change = newChange(i, e, d.ID, now)
-		p.change.State = "committed"
+		if err = lifecycle.DecideReferenceChange(&p.change.State, "committed"); err != nil {
+			return err
+		}
 		p.change.AppliedRevision = &d.Revision
 		if err = saveChange(tx, &p.change); err != nil {
 			return err
 		}
 	} else {
+		if err = lifecycle.DecideReferenceChange(&current.State, "committed"); err != nil {
+			return err
+		}
 		if err = tx.Model(&current).
-			Updates(map[string]any{"state": "committed", "applied_revision": d.Revision, "updated_at": now}).
+			Updates(map[string]any{"state": current.State, "applied_revision": d.Revision, "updated_at": now}).
 			Error; err != nil {
 			return err
 		}

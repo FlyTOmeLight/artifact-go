@@ -15,6 +15,7 @@ import (
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/backgroundtask"
+	"github.com/FlyTOmeLight/artifact-go/internal/doctor"
 	"github.com/FlyTOmeLight/artifact-go/service"
 )
 
@@ -26,6 +27,7 @@ func main() {
 }
 
 func run() error {
+	action := flag.String("action", "recover", "maintenance action (recover or doctor)")
 	domain := flag.String("domain", "artifact", "task domain (artifact or storage)")
 	configPath := flag.String("db-config", "", "path to private JSON db.Config")
 	task := flag.String("task-id", "", "failed task ID")
@@ -34,7 +36,19 @@ func run() error {
 	reason := flag.String("reason", "", "recovery reason")
 	record := flag.String("record", "", "ticket or operation record")
 	execute := flag.Bool("execute", false, "apply requeue; omitted means dry-run")
+	limit := flag.Int("limit", doctor.DefaultLimit, "maximum candidate rows per doctor check (1-10000)")
 	flag.Parse()
+	if *action != "recover" && *action != "doctor" {
+		return fmt.Errorf("unsupported maintenance action %q", *action)
+	}
+	if *action == "doctor" {
+		if *execute {
+			return errors.New("doctor is read-only; --execute is not supported")
+		}
+		if *limit < 1 || *limit > doctor.MaxLimit {
+			return fmt.Errorf("doctor limit must be between 1 and %d", doctor.MaxLimit)
+		}
+	}
 	if *domain != "artifact" && *domain != "storage" {
 		return fmt.Errorf("unsupported task domain %q", *domain)
 	}
@@ -72,6 +86,13 @@ func run() error {
 		return err
 	}
 	defer sqlDB.Close()
+	if *action == "doctor" {
+		report, err := doctor.Run(ctx, database, *domain, *limit)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(report)
+	}
 	if *domain == "storage" {
 		result, err := storage.RecoverTask(
 			ctx,

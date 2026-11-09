@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
@@ -42,7 +43,9 @@ func MarkDeleting(tx *db.DB, file *table.StorageFile) error {
 	if err != nil {
 		return err
 	}
-	file.State = "deleting"
+	if err = lifecycle.File(&file.State, "deleting"); err != nil {
+		return err
+	}
 	if err = tx.Save(file).Error; err != nil {
 		return err
 	}
@@ -165,7 +168,9 @@ func (w *Worker) sweep(ctx context.Context) error {
 				return e
 			}
 			if needsDelete {
-				task.State = "pending"
+				if e = lifecycle.Task(&task.State, lifecycle.ScheduleTask); e != nil {
+					return e
+				}
 				task.NextRunAt = now
 				task.Attempts = 0
 				task.RunGeneration++
@@ -202,7 +207,9 @@ func (w *Worker) Execute(ctx context.Context, task *table.StorageTask) error {
 			return errors.New("file is not eligible for deletion")
 		}
 		if file.LastGrantExpiresAt != nil && now.Before(*file.LastGrantExpiresAt) {
-			row.State = "pending"
+			if e = lifecycle.Task(&row.State, lifecycle.RetryTask); e != nil {
+				return e
+			}
 			row.NextRunAt = *file.LastGrantExpiresAt
 			row.LeaseToken = ""
 			row.LeaseUntil = nil
@@ -239,7 +246,9 @@ func (w *Worker) Execute(ctx context.Context, task *table.StorageTask) error {
 		if current.LastGrantExpiresAt != nil && now.Before(*current.LastGrantExpiresAt) {
 			return errors.New("write grant deadline changed during deletion")
 		}
-		current.State = "deleted"
+		if e = lifecycle.File(&current.State, "deleted"); e != nil {
+			return e
+		}
 		if current.DeletedAt == nil {
 			current.DeletedAt = &now
 		}
@@ -248,7 +257,9 @@ func (w *Worker) Execute(ctx context.Context, task *table.StorageTask) error {
 		if e = tx.Save(&current).Error; e != nil {
 			return e
 		}
-		row.State = "done"
+		if e = lifecycle.Task(&row.State, lifecycle.CompleteTask); e != nil {
+			return e
+		}
 		row.LeaseToken = ""
 		row.LeaseUntil = nil
 		row.Revision++

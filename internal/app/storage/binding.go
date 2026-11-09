@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 )
@@ -209,13 +210,15 @@ func (s *BindingService) Bind(
 				return fileError(409, "ReferenceReleased", "released reference cannot be bound")
 			}
 			if file.State != "bound" {
+				if e = lifecycle.File(&file.State, "bound"); e != nil {
+					return e
+				}
 				if e = tx.Model(&table.StorageFile{}).
 					Where("id = ?", file.ID).
-					Update("state", "bound").
+					Update("state", file.State).
 					Error; e != nil {
 					return e
 				}
-				file.State = "bound"
 				files[file.ID] = file
 			}
 		}
@@ -277,7 +280,9 @@ func (s *BindingService) Release(
 				return e
 			}
 			if row.State == "active" {
-				row.State = "released"
+				if e = lifecycle.Reference(&row.State, "released"); e != nil {
+					return e
+				}
 				row.UpdatedAt = now
 				if e = tx.Save(&row).Error; e != nil {
 					return e

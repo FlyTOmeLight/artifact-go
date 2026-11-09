@@ -11,6 +11,7 @@ import (
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 )
 
@@ -122,10 +123,13 @@ func (w *Worker) executeRelease(ctx context.Context, task *table.BackgroundTask)
 		if e != nil {
 			return e
 		}
-		if complete && plan.VersionID != "" {
+		if complete && plan.VersionID != "" && target.State == "deleting" {
+			if e = lifecycle.Version(&target.State, "deleted"); e != nil {
+				return e
+			}
 			if e = tx.Model(&table.Version{}).
 				Where("id = ? AND state = ?", plan.VersionID, "deleting").
-				Updates(map[string]any{"state": "deleted", "deleted_at": now}).
+				Updates(map[string]any{"state": target.State, "deleted_at": now}).
 				Error; e != nil {
 				return e
 			}
@@ -134,10 +138,14 @@ func (w *Worker) executeRelease(ctx context.Context, task *table.BackgroundTask)
 		row.LeaseUntil = nil
 		row.Revision++
 		if complete {
-			row.State = "done"
+			if e = lifecycle.Task(&row.State, lifecycle.CompleteTask); e != nil {
+				return e
+			}
 			row.LastError = ""
 		} else {
-			row.State = "pending"
+			if e = lifecycle.Task(&row.State, lifecycle.RetryTask); e != nil {
+				return e
+			}
 			row.NextRunAt = now.Add(max(w.config.ScanInterval, time.Second))
 		}
 		if e = tx.Save(row).Error; e != nil {

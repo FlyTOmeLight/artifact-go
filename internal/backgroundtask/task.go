@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
@@ -98,7 +99,9 @@ func (w *Worker) Claim(ctx context.Context) (*table.BackgroundTask, error) {
 			return err
 		}
 		until := now.Add(w.config.LeaseDuration)
-		row.State = "running"
+		if err = lifecycle.Task(&row.State, lifecycle.ClaimTask); err != nil {
+			return err
+		}
 		row.LeaseToken = uuid.NewString()
 		row.LeaseUntil = &until
 		row.TotalAttempts++
@@ -157,9 +160,12 @@ func (w *Worker) Fail(ctx context.Context, id, token string, cause error) error 
 		if len(row.LastError) > 1024 {
 			row.LastError = strings.ToValidUTF8(row.LastError[:1024], "")
 		}
-		row.State = "pending"
+		event := lifecycle.RetryTask
 		if int(row.Attempts) >= w.config.MaxFailures {
-			row.State = "failed"
+			event = lifecycle.FailTask
+		}
+		if err = lifecycle.Task(&row.State, event); err != nil {
+			return err
 		}
 		shift := min(row.Attempts-1, 6)
 		delay := min(time.Second*time.Duration(1<<shift), 60*time.Second)

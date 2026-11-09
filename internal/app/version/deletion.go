@@ -14,6 +14,7 @@ import (
 	"github.com/FlyTOmeLight/artifact-go/internal/app/alias"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/retention"
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/artifactv1"
@@ -98,7 +99,7 @@ func markDeleting(tx *db.DB, row *table.Version, automatic bool, now time.Time) 
 	if err := tx.Where("version_id = ?", row.ID).Find(&files).Error; err != nil {
 		return err
 	}
-	row.State = "deleted"
+	nextState := "deleted"
 	if len(files) > 0 {
 		var artifact table.Artifact
 		if err := tx.First(&artifact, "id = ?", row.ArtifactID).Error; err != nil {
@@ -129,7 +130,10 @@ func markDeleting(tx *db.DB, row *table.Version, automatic bool, now time.Time) 
 		if err := tx.Where("version_id = ?", row.ID).Delete(&table.VersionFile{}).Error; err != nil {
 			return err
 		}
-		row.State = "deleting"
+		nextState = "deleting"
+	}
+	if err := lifecycle.Version(&row.State, nextState); err != nil {
+		return err
 	}
 	row.Payload = []byte(`{}`)
 	row.Annotations = []byte(`{}`)

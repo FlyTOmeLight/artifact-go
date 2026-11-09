@@ -12,6 +12,7 @@ import (
 	"github.com/FlyTOmeLight/server-go/db"
 	"gorm.io/gorm/clause"
 
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 )
 
@@ -90,6 +91,10 @@ func (w *Worker) Recover(ctx context.Context, request RecoveryRequest, execute b
 		if err = json.Unmarshal(row.RecoveryEvents, &events); err != nil {
 			return err
 		}
+		from := row.State
+		if err = lifecycle.Task(&row.State, lifecycle.RecoverTask); err != nil {
+			return err
+		}
 		events = append(
 			events,
 			RecoveryEvent{
@@ -101,8 +106,8 @@ func (w *Worker) Recover(ctx context.Context, request RecoveryRequest, execute b
 				PreviousGeneration: row.RunGeneration,
 				PreviousFailures:   row.Attempts,
 				PreviousError:      row.LastError,
-				From:               "failed",
-				To:                 "pending",
+				From:               from,
+				To:                 row.State,
 			},
 		)
 		row.RecoveryEvents, err = json.Marshal(events)
@@ -112,7 +117,6 @@ func (w *Worker) Recover(ctx context.Context, request RecoveryRequest, execute b
 		row.RunGeneration++
 		row.Revision++
 		row.Attempts = 0
-		row.State = "pending"
 		row.NextRunAt = now
 		if now.Before(row.NotBefore) {
 			row.NextRunAt = row.NotBefore

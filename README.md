@@ -138,6 +138,29 @@ bin/artifact-maintenance --domain artifact --db-config /secure/artifact-db.json 
 
 重排保留任务身份、载荷、NotBefore及累计次数，同事务追加审计并开启新预算。提交结果不明时命令查询主库审计；仍不能确认则报OperationOutcomeUnknown，不盲目重写。
 
+`--action` 默认仍为 `recover`。使用 `--action doctor` 执行只读巡检，分别连接 artifact 和 storage 数据库；不需要恢复参数，不接受 `--execute`，不会迁移表或修复数据。
+
+状态转换与巡检边界见[状态机说明](docs/state-machines.md)。
+
+```sh
+bin/artifact-maintenance --action doctor --domain artifact \
+  --db-config /secure/artifact-db.json --limit 1000
+bin/artifact-maintenance --action doctor --domain storage \
+  --db-config /secure/storage-db.json --limit 1000
+```
+
+每次巡检使用单库只读、可重复读事务，并读取数据库时间作为统一截止时间。两次命令不构成跨库快照。JSON 输出包含 `domain`、`databaseTime`、`limit`、`complete`、`errors`、`warnings` 和 `checks`；每项检查包含 `name`、`scanned`、`truncated` 和 `findings`，每条发现包含对象 `id`、可选 `taskID`、`severity` 和 `message`。
+
+| 检查 | 语义 |
+| --- | --- |
+| `bound_file_active_reference` | `bound` 文件必须至少有一条 `active` 引用，否则报 error。 |
+| `deleted_file_cleanup` | 已删除文件缺失删除任务，或任务 `done` 但未安排下一次 sweep，报 error。已到期的 sweep 时间仍是有效调度；重扫任务 `pending` / `running` 合法，`failed` 报需要人工恢复的 warning。仅有 sweep 时间但没有任务，无法触发 worker。 |
+| `deleting_version_reference_release` | 按任务载荷中的 `versionID` 关联版本，不使用代表尝试 UUID 的 `TargetID`。缺少未完成释放任务报 error，关联的任务 `failed` 报 warning。 |
+| `expired_preparing_reference_change` | 数据库时间已到 `Deadline` 的 preparing 尝试报 warning，表示等待 worker 中止，不能仅据此判为数据损坏。 |
+| `failed_retention_evaluation` | failed 保留任务会阻断后续周期评估，报需要人工恢复的 warning。 |
+
+`--limit` 默认 1000，范围 1–10000，限制每项检查的候选行数；计数只覆盖本次检查，超过上限时对应 `truncated=true`、报告 `complete=false`，即使没有发现问题也不能当作完整健康结论。版本检查流式读取未完成释放任务，只保存本次候选版本的关联结果，不把任务载荷放进报告。释放任务必须能解析为 worker 使用的计划且引用清单非空；无效计划会报出任务 ID 并终止巡检。整次运行限时 30 秒；查询、载荷解析或超时失败时退出非零且不输出不完整报告。成功生成报告退出 0，自动化应另外检查 `complete`、`errors` 和 `warnings`。
+
 [T04交付与审查记录](docs/t04-acceptance-20261015.md)记录纯 JSON 切片；当前文件释放与回收由 T09/T10 接入。
 
 ## T05 草稿

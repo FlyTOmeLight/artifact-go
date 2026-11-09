@@ -7,6 +7,7 @@ import (
 	core "github.com/FlyTOmeLight/server-go/pkg"
 
 	client "github.com/FlyTOmeLight/artifact-go/internal/client/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 	table "github.com/FlyTOmeLight/artifact-go/internal/table/storage"
 	api "github.com/FlyTOmeLight/artifact-go/sdk/go/storagev1"
@@ -65,7 +66,9 @@ func (s *Service) CompleteFile(c *core.Context, id string) (*api.FileResponse, e
 		if info.Size > s.limits.MaxFileBytes {
 			return fileError(413, "FileTooLarge", "file exceeds configured size limit")
 		}
-		row.State = "ready"
+		if e = lifecycle.File(&row.State, "ready"); e != nil {
+			return e
+		}
 		row.Size = &info.Size
 		e = tx.Model(&row).Updates(map[string]any{"state": row.State, "size": info.Size}).Error
 		completed = e == nil

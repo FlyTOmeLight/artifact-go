@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/version"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
 	"github.com/FlyTOmeLight/artifact-go/internal/telemetry"
 )
@@ -62,7 +63,9 @@ func (w *Worker) Scan(ctx context.Context) error {
 			} else if err != nil {
 				return err
 			} else if task.State == "done" {
-				task.State = "pending"
+				if err = lifecycle.Task(&task.State, lifecycle.ScheduleTask); err != nil {
+					return err
+				}
 				task.NextRunAt = now
 				task.Attempts = 0
 				task.RunGeneration++
@@ -138,7 +141,9 @@ func (w *Worker) Execute(ctx context.Context, task *table.BackgroundTask) error 
 		if err != nil {
 			return err
 		}
-		row.State = "done"
+		if err = lifecycle.Task(&row.State, lifecycle.CompleteTask); err != nil {
+			return err
+		}
 		row.LeaseToken = ""
 		row.LeaseUntil = nil
 		row.Revision++

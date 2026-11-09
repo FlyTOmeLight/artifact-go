@@ -12,3 +12,5 @@
 - Forge 本机登录验收遇到 `IDENTITY_NOT_ENROLLED` 时，先检查浏览器是否残留旧的 `forge_identity` cookie；旧 cookie 会把 Casdoor 鉴权带到已废弃账号。清理后重新登录。旧 TLS 证书过期时，同时续签 `tenant-lab` 的 CA 与服务端证书，并更新 `forge-tls` 的 CA 链。
 - 不要给 storage Adapter 补 `Open`/`io.ReadCloser` 或“阻塞读取退出”测试：设计上 Adapter 只有 EnsureBucket、CreateGrant、Stat、Delete 等元数据/删除能力，字节读取由客户端用 STS 直连 S3。取消测试只需验证 Adapter 操作保留 `context.Canceled`。
 - 沙箱内直接跑 `gorgeous -d` 可能与 `make check` 结果不一致：同一个文件在沙箱里显示 `pretty`，提权执行 `make check` 时却报 `ugly`。以 `make check` 为准；需要重写时在提权 shell 执行 `gorgeous <file>`，不要因为沙箱内的 `pretty` 就跳过格式修复。
+- 收敛生命周期时，不能把现有状态简化成单向直线：未绑定文件可直接进入 deleting，deleted 文件允许复扫后重复写 deleted；done 任务允许按新一轮评估或复扫重新调度，failed 任务只能经带 CAS 和审计的人工恢复重排；aborted 引用变更可以用新 AttemptID 重试，同一 attempt 的终态仍不可改写。验证依据：现有 worker、引用补偿路径及 `internal/lifecycle` 迁移矩阵测试；完整规则见 `docs/state-machines.md`。
+- doctor 关联释放任务时须按 worker 的 `ReferencePlan` 解析并拒绝空引用清单；只提取 `versionID` 会把无法执行的 pending/running 任务误判为正常。验证依据：`executeRelease` 明确拒绝空计划，`TestDoctorArtifactChecks` 覆盖 pending/running/failed 下缺失、null、空引用清单及非法 JSON。

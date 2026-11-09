@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/FlyTOmeLight/artifact-go/internal/app/storage"
+	"github.com/FlyTOmeLight/artifact-go/internal/lifecycle"
 	"github.com/FlyTOmeLight/artifact-go/internal/reference"
 	"github.com/FlyTOmeLight/artifact-go/internal/scope"
 	"github.com/FlyTOmeLight/artifact-go/internal/table"
@@ -302,6 +303,9 @@ func (s *Service) prepareReferences(
 				Deadline:      deadline,
 				Plan:          raw,
 			}
+			if e = lifecycle.ReferenceAttempt(old.State, old.AttemptID, change.AttemptID); e != nil {
+				return e
+			}
 			if old.AttemptID == "" {
 				e = tx.Create(&change).Error
 			} else {
@@ -403,8 +407,10 @@ func AbortReferenceChange(tx *db.DB, change *table.ReferenceChange, now time.Tim
 			return err
 		}
 	}
-	change.State = "aborted"
-	return tx.Model(change).Update("state", "aborted").Error
+	if err := lifecycle.DecideReferenceChange(&change.State, "aborted"); err != nil {
+		return err
+	}
+	return tx.Model(change).Update("state", change.State).Error
 }
 
 func QueueReferenceRelease(tx *db.DB, id string, plan ReferencePlan, when time.Time) error {
@@ -527,7 +533,10 @@ func commitReferences(
 			return err
 		}
 	}
-	return tx.Model(&current).Update("state", "committed").Error
+	if err = lifecycle.DecideReferenceChange(&current.State, "committed"); err != nil {
+		return err
+	}
+	return tx.Model(&current).Update("state", current.State).Error
 }
 
 // LoadFiles adds the manifest using the caller's transaction snapshot.
@@ -686,9 +695,15 @@ func (s *Service) persistSourceConflict(
 				TenantID:      identity.TenantID,
 				ScopeKey:      identity.Key(),
 				AttemptID:     uuid.NewString(),
-				State:         "aborted",
+				State:         "preparing",
 				Deadline:      now,
 				Plan:          raw,
+			}
+			if e = lifecycle.ReferenceAttempt(prior.State, prior.AttemptID, decision.AttemptID); e != nil {
+				return e
+			}
+			if e = lifecycle.DecideReferenceChange(&decision.State, "aborted"); e != nil {
+				return e
 			}
 			if prior.AttemptID == "" {
 				e = tx.Create(&decision).Error
