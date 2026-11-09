@@ -27,31 +27,7 @@ func TestStorageFileLive(t *testing.T) {
 		t.Skip("live credentials required")
 	}
 	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
-		cfg := &service.StorageConfig{
-			BackendID:       "juicefs-local",
-			Endpoint:        os.Getenv("ARTIFACT_TEST_S3_ENDPOINT"),
-			Region:          "us-east-1",
-			AccessKeyID:     os.Getenv("ARTIFACT_TEST_S3_ACCESS_KEY_ID"),
-			SecretAccessKey: os.Getenv("ARTIFACT_TEST_S3_SECRET_ACCESS_KEY"),
-			UsePathStyle:    true,
-		}
-		operator := s3.New(
-			s3.Options{
-				HTTPClient:       &http.Client{Timeout: 5 * time.Second},
-				RetryMaxAttempts: 1,
-				Region:           cfg.Region,
-				BaseEndpoint:     aws.String(cfg.Endpoint),
-				UsePathStyle:     true,
-				Credentials: aws.CredentialsProviderFunc(
-					func(context.Context) (aws.Credentials, error) {
-						return aws.Credentials{
-							AccessKeyID:     cfg.AccessKeyID,
-							SecretAccessKey: cfg.SecretAccessKey,
-						}, nil
-					},
-				),
-			},
-		)
+		cfg, operator := liveStorageBackend(t)
 		tenant := fmt.Sprintf("t_%x", bucketRandom(t))
 		c, _, svc := storageFileServer(
 			t,
@@ -82,46 +58,7 @@ func TestStorageFileLive(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// The probe owns this unique empty bucket; cleanup also handles a failed assertion.
-		t.Cleanup(func() {
-			cleanup, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			_ = svc.Stop(cleanup)
-			uploads, e := operator.ListMultipartUploads(
-				cleanup,
-				&s3.ListMultipartUploadsInput{Bucket: aws.String(bucket.Bucket)},
-			)
-			if e == nil {
-				for _, u := range uploads.Uploads {
-					_, _ = operator.AbortMultipartUpload(
-						cleanup,
-						&s3.AbortMultipartUploadInput{
-							Bucket:   aws.String(bucket.Bucket),
-							Key:      u.Key,
-							UploadId: u.UploadId,
-						},
-					)
-				}
-			}
-			objects, e := operator.ListObjectsV2(
-				cleanup,
-				&s3.ListObjectsV2Input{Bucket: aws.String(bucket.Bucket)},
-			)
-			if e == nil {
-				for _, o := range objects.Contents {
-					_, _ = operator.DeleteObject(
-						cleanup,
-						&s3.DeleteObjectInput{Bucket: aws.String(bucket.Bucket), Key: o.Key},
-					)
-				}
-			}
-			if _, e = operator.DeleteBucket(
-				cleanup,
-				&s3.DeleteBucketInput{Bucket: aws.String(bucket.Bucket)},
-			); e != nil {
-				t.Error("live test bucket cleanup failed")
-			}
-		})
+		cleanupLiveBucket(t, operator, svc, bucket.Bucket)
 		f := storageRegister(t, c, ctx, "live-file", 5)
 		key := "files/" + f.FileID
 		put := func() {
@@ -208,6 +145,174 @@ func TestStorageFileLive(t *testing.T) {
 		got, err := c.GetFile(ctx, f.FileID)
 		if err != nil || got.State != api.FileDeleted {
 			t.Fatalf("late write resurrected metadata: %+v %v", got, err)
+		}
+	})
+}
+
+// TestStorageFileExpiryLive proves the expire-to-delete worker path aborts an
+// incomplete multipart upload on the exact key against a real S3 backend.
+func TestStorageFileExpiryLive(t *testing.T) {
+	if os.Getenv("ARTIFACT_TEST_S3_ACCESS_KEY_ID") == "" {
+		t.Skip("live credentials required")
+	}
+	fixture.ForEachDatabase(t, func(t *testing.T, database *db.DB) {
+		cfg, operator := liveStorageBackend(t)
+		tenant := fmt.Sprintf("t_%x", bucketRandom(t))
+		c, _, svc := storageFileServer(
+			t,
+			database,
+			service.StorageOptions{
+				Config: cfg,
+				IdentityResolver: func(*http.Request) (service.RequestIdentity, error) {
+					return service.RequestIdentity{
+						TenantID:       tenant,
+						UserID:         "probe",
+						OwnershipState: service.OwnershipActive,
+					}, nil
+				},
+				TenantServiceVerifier: func(*http.Request) error { return nil },
+				AutoMigrate:           true,
+				Files: &service.StorageFileConfig{
+					MaxFileBytes:        1 << 20,
+					TemporaryFileTTL:    2 * time.Second,
+					MaxRequestBodyBytes: 1 << 20,
+				},
+				Worker: &service.StorageWorkerConfig{
+					Concurrency:   1,
+					ScanInterval:  20 * time.Millisecond,
+					LeaseDuration: time.Second,
+					RenewInterval: 200 * time.Millisecond,
+					SweepInterval: 100 * time.Millisecond,
+					MaxFailures:   3,
+				},
+			},
+		)
+		ctx := t.Context()
+		bucket, err := c.CreateTenantBucket(ctx, &api.CreateTenantBucketRequest{TenantID: tenant})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cleanupLiveBucket(t, operator, svc, bucket.Bucket)
+		f := storageRegister(t, c, ctx, "expiry-multipart", 5)
+		key := "files/" + f.FileID
+		target, err := operator.CreateMultipartUpload(
+			ctx,
+			&s3.CreateMultipartUploadInput{Bucket: aws.String(bucket.Bucket), Key: aws.String(key)},
+		)
+		if err != nil {
+			t.Fatal("create multipart failed")
+		}
+		uploads, err := operator.ListMultipartUploads(
+			ctx,
+			&s3.ListMultipartUploadsInput{Bucket: aws.String(bucket.Bucket)},
+		)
+		if err != nil {
+			t.Fatal("list multipart failed")
+		}
+		found := false
+		for _, upload := range uploads.Uploads {
+			if aws.ToString(upload.UploadId) == aws.ToString(target.UploadId) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("multipart was not visible before expiry")
+		}
+		if err = svc.Start(ctx); err != nil {
+			t.Fatal(err)
+		}
+		awaitStorageLive(t, func() bool {
+			got, e := c.GetFile(ctx, f.FileID)
+			if e != nil || got.State != api.FileDeleted {
+				return false
+			}
+			uploads, e := operator.ListMultipartUploads(
+				ctx,
+				&s3.ListMultipartUploadsInput{Bucket: aws.String(bucket.Bucket)},
+			)
+			if e != nil {
+				return false
+			}
+			for _, upload := range uploads.Uploads {
+				if aws.ToString(upload.UploadId) == aws.ToString(target.UploadId) {
+					return false
+				}
+			}
+			return true
+		})
+	})
+}
+
+func liveStorageBackend(t *testing.T) (*service.StorageConfig, *s3.Client) {
+	t.Helper()
+	cfg := &service.StorageConfig{
+		BackendID:       "juicefs-local",
+		Endpoint:        os.Getenv("ARTIFACT_TEST_S3_ENDPOINT"),
+		Region:          "us-east-1",
+		AccessKeyID:     os.Getenv("ARTIFACT_TEST_S3_ACCESS_KEY_ID"),
+		SecretAccessKey: os.Getenv("ARTIFACT_TEST_S3_SECRET_ACCESS_KEY"),
+		UsePathStyle:    true,
+	}
+	operator := s3.New(
+		s3.Options{
+			HTTPClient:       &http.Client{Timeout: 5 * time.Second},
+			RetryMaxAttempts: 1,
+			Region:           cfg.Region,
+			BaseEndpoint:     aws.String(cfg.Endpoint),
+			UsePathStyle:     true,
+			Credentials: aws.CredentialsProviderFunc(
+				func(context.Context) (aws.Credentials, error) {
+					return aws.Credentials{
+						AccessKeyID:     cfg.AccessKeyID,
+						SecretAccessKey: cfg.SecretAccessKey,
+					}, nil
+				},
+			),
+		},
+	)
+	return cfg, operator
+}
+
+// cleanupLiveBucket owns the unique empty bucket and also handles a failed assertion.
+func cleanupLiveBucket(t *testing.T, operator *s3.Client, svc *service.StorageService, bucket string) {
+	t.Helper()
+	t.Cleanup(func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		_ = svc.Stop(cleanup)
+		uploads, e := operator.ListMultipartUploads(
+			cleanup,
+			&s3.ListMultipartUploadsInput{Bucket: aws.String(bucket)},
+		)
+		if e == nil {
+			for _, u := range uploads.Uploads {
+				_, _ = operator.AbortMultipartUpload(
+					cleanup,
+					&s3.AbortMultipartUploadInput{
+						Bucket:   aws.String(bucket),
+						Key:      u.Key,
+						UploadId: u.UploadId,
+					},
+				)
+			}
+		}
+		objects, e := operator.ListObjectsV2(
+			cleanup,
+			&s3.ListObjectsV2Input{Bucket: aws.String(bucket)},
+		)
+		if e == nil {
+			for _, o := range objects.Contents {
+				_, _ = operator.DeleteObject(
+					cleanup,
+					&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: o.Key},
+				)
+			}
+		}
+		if _, e = operator.DeleteBucket(
+			cleanup,
+			&s3.DeleteBucketInput{Bucket: aws.String(bucket)},
+		); e != nil {
+			t.Error("live test bucket cleanup failed")
 		}
 	})
 }

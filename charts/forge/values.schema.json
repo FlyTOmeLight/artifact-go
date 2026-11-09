@@ -56,6 +56,13 @@
       "type": "object",
       "properties": {
         "image": {"$ref": "#/definitions/image"},
+        "configRevision": {"type": "string", "minLength": 1},
+        "csp": {
+          "type": "object",
+          "properties": {
+            "connectSrc": {"type": "array", "items": {"type": "string", "minLength": 1}}
+          }
+        },
         "coding": {"type": "object", "properties": {"enabled": {"const": false}}},
         "agent": {"type": "object", "properties": {"enabled": {"const": false}}}
       }

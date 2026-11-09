@@ -2,7 +2,7 @@
 
 # 对象存储直传契约验证
 
-> 最新grill已决定仅核对对象存在和大小，摘要为客户端声明；下列脚本及机器报告仍保留旧严格摘要探针行为，尚未适配本轮决定。本轮只改设计，不能用旧摘要失败阻塞新契约，也不能把旧报告改成通过。
+> 当前契约只核对对象存在和大小，摘要为客户端声明。`scripts/verify_s3_contract.py` 默认使用 `--checksum-mode declared`；需要严格后端摘要的旧环境可显式传 `--checksum-mode trusted`。2026-11-09 的 Forge 实测见[本轮报告](forge-20261109.md)。
 
 本目录与 `scripts/verify_s3_contract.py` 提供真实端点探针。2026-10-15 的独立 JuiceFS 多 bucket gateway + Redis 环境已退役，相关报告仅保留历史实测证据。当前安装与访问见 [Forge 部署说明](../../deploy/forge/README.md)。RustFS 已按用户要求移除，原报告保留为历史验证记录，不能把 RustFS 的结果用于证明 gateway 通过。当前工具支持 RustFS 原生 STS、JuiceFS gateway STS 请求和 AWS STS，不自动创建 bucket、IAM 用户或更改远端策略。实际入口、镜像版本及结果由部署记录补充。
 
@@ -10,11 +10,11 @@
 
 ## 准备隔离测试范围
 
-在每个实际入口准备两个不同的专用测试 bucket，模拟不同租户；使用 `--bucket` 和 `--other-tenant-bucket` 指定，不把现有本地测试 bucket 当成真实租户配置。认证使用部署提供的长期服务 IAM 用户，权限包括查询 bucket versioning/lifecycle/CORS、对象 HEAD/GET/DELETE、上传及中止分片，且能在第二个测试 bucket 创建和删除探针对象。RustFS STS 临时会话权限是父用户与 session policy 的交集，父用户必须允许上传。可用 `--grant-profile` 将服务查询/清理身份与签发 STS 的上传身份分开。历史 RustFS 部署同时实测 root 派生限权会话与普通 IAM 用户派生会话，不能将结果推广到 JuiceFS 或其他版本。
+在每个实际入口准备两个不同的专用测试 bucket，模拟不同租户；使用 `--bucket` 和 `--other-tenant-bucket` 指定，不把现有本地测试 bucket 当成真实租户配置。Forge 的 JuiceFS 部署中，issuer 策略只覆盖 `arn:aws:s3:::tenant-t-*/*`，测试 bucket 应使用 `tenant-t-<24 hex>` 命名；其他名称被拒绝是策略生效，不是部署故障。认证使用部署提供的长期服务 IAM 用户，权限包括查询 bucket versioning/lifecycle/CORS、对象 HEAD/GET/DELETE、上传及中止分片，且能在第二个测试 bucket 创建和删除探针对象。RustFS STS 临时会话权限是父用户与 session policy 的交集，父用户必须允许上传。可用 `--grant-profile` 将服务查询/清理身份与签发 STS 的上传身份分开。历史 RustFS 部署同时实测 root 派生限权会话与普通 IAM 用户派生会话，不能将结果推广到 JuiceFS 或其他版本。
 
 人工检查并配置 `lifecycle.template.json` 与 `cors.template.json`。替换 bucket 与客户端 origin，合并到已有配置，勿直接覆盖业务配置。旧条件写策略模板已移除；探针上传不附加防覆盖条件头。
 
-测试要求 Versioning 为 Disabled。Enabled 或 Suspended 时，普通 DELETE 可能保留旧版本；工具会明确失败，不把 HEAD 404 当作物理删除。需要这些配置时，应先确定逐版本清理契约和权限再扩展验证。[AWS 版本删除](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html)
+测试要求 Versioning 为 Disabled。Enabled 或 Suspended 时，普通 DELETE 可能保留旧版本；工具会明确失败，不把 HEAD 404 当作物理删除。JuiceFS 1.4.1 对 bucket versioning/lifecycle API 返回 `NotImplemented`，探针记为 pending，不能当作通过。需要这些配置时，应先确定逐版本清理契约和权限再扩展验证。[AWS 版本删除](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html)
 
 本工具默认部署参数为凭证 900 秒、会话 3600 秒、单文件 1 GiB、每会话 100 个文件。这些是测试输入，不能当作容量预留或已落实的业务限制。10 GiB 是本地 PVC 的容量请求，JuiceFS 逻辑容量为 9 GiB、缓存为 256 MiB，文件上限还需依据对象存储容量和业务登记限制确定。未完成分片回收默认 1 天，长于会话期限；生命周期只回收未完成分片。[AWS 分片生命周期](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html)
 
@@ -44,21 +44,21 @@ AWS 后端改用 `--backend aws --role-arn <实际上传角色 ARN>`，可省略
 
 ## 自动检查与后续验收
 
-现有旧探针检查包括：单次SHA256、坏校验拒绝、分片组合摘要和可信HEAD（这些摘要项已不属于当前契约，后续需移除），列举/中止分片、其他 key 和其他租户 bucket 写入拒绝、完整对象删除拒绝、读取流提前关闭、删除不存在对象、实际期限与清理。防覆盖检查已取消。先执行合法上传正例，避免把“所有请求都返回 403”误当作权限生效。
+当前探针默认 `--checksum-mode declared`，检查单次/分片上传、列举/中止分片、其他 key 和其他租户 bucket 写入拒绝、完整对象删除拒绝、读取流提前关闭、删除不存在对象、实际期限与清理；只有显式使用 `--checksum-mode trusted` 时才要求后端摘要回显和坏摘要拒绝。防覆盖检查已取消。先执行合法上传正例，避免把“所有请求都返回 403”误当作权限生效。
 
 跨租户检查先用服务身份在 `--other-tenant-bucket` 写入探针对象以确认目标可用，再验证本租户限权身份写入被拒绝，最后清理该对象。该参数可选；缺少参数或使用 `--service-only` 时，此项必须记录 pending，不能据其他 key 被拒绝推断跨 bucket 隔离已通过。
 
-分片 SHA256 值为各分片 SHA256 的组合校验，包含 `-2` 分片数量后缀；不等于全文件摘要。此探针只批准实测通过的两个 SHA256 组合，不能推导其他算法支持。[AWS 内容校验](https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity-upload.html)
+`trusted` 模式下，分片 SHA256 值为各分片 SHA256 的组合校验，包含 `-2` 分片数量后缀；不等于全文件摘要。此探针只批准实测通过的两个 SHA256 组合，不能推导其他算法支持。[AWS 内容校验](https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity-upload.html)
 
 本轮grill前的数据探针结果见[历史数据报告](juicefs-client-managed-report.json)：不再执行防覆盖检查，单次/分片上传与清理通过，可信校验及 versioning/lifecycle 查询仍失败；service-only 模式下租户隔离和 STS 保持 pending。
 
 历史能力结果见 [2026-10-15 实测报告](results-20261015.md)，该报告按旧契约生成，条件写失败已不属于当前验收阻塞；摘要失败已不属于当前发布门槛；权限与回收等仍需满足的失败项不能略过。以下后续项仍需补充实际证据才能验收任务 02：
 
-- JuiceFS gateway 1.4.1 已独立实测可信校验失败，versioning/lifecycle 查询 NotImplemented。root STS 请求被拒绝，普通 IAM 用户签发、精确 key 与跨租户 bucket 隔离能力尚未验收。基本读写通过不能证明这些要求通过；能力补齐后需对同一固定版本重新验证。
-- 浏览器使用实际origin、SDK、代理和外网入口完成单次/分片操作，记录OPTIONS、实际请求及必要响应头；声明摘要不要求后端checksum响应头。配置检查不能证明浏览器路径可用。[S3 CORS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html)
+- JuiceFS gateway 1.4.1 不实现可信校验回显，versioning/lifecycle 查询返回 `NotImplemented`。2026-11-09 已在 Forge 实测普通 IAM issuer 签发、精确 key、跨租户 bucket 隔离和凭证到期拒绝；这些结果只覆盖当前固定版本，能力或版本变化后需重新验证。
+- 浏览器路径已在 2026-11-09 用真实 Chromium 从干净页面完成签名 `PUT`、`GET`、`HEAD`、`Range`，网关对 `http://127.0.0.1:8483` 的 `OPTIONS` 预检也通过。Forge Web release 已下发 `connect-src 'self' http://127.0.0.1:19010`，并从同源文档完成四项签名请求；登录后的真实 UI 路径也已完成预登记→STS→`PUT`→Complete→下载/`Range`→删除闭环，上传凭证越权读取返回 403。[S3 CORS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html)
 - 创建一条专用 UUID 的遗留分片并记录 UploadId、创建时间；在生命周期到期并实际执行后，确认 ListParts 返回 NoSuchUpload。保留前后证据，勿用配置存在代替执行结果。
 - 临时身份不能修改 bucket policy：探针只调用只读 GetBucketPolicy，拒绝可作权限证据，但不会冒险调用策略修改 API；需要部署权限审计或隔离环境中的额外验证。
-- Go 存储 Adapter 对 context 取消、阻塞读取退出和关闭资源的测试，需要 Adapter 落地后执行；Python 的提前 close 不能替代该结果。
+- Go 存储 Adapter 当前只提供元数据、授权与删除操作，没有 `Open`/`io.ReadCloser` 契约；字节读取由客户端用 STS 直连。`EnsureBucket`、`CreateGrant`、`CheckBucket`、`Stat`、`Delete`、`HasIncompleteUploads` 的 context 取消原因已有测试覆盖，“阻塞读取退出”和 reader 关闭不属于当前接口。
 
 
 

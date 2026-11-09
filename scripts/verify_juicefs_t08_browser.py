@@ -13,11 +13,12 @@ import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
 import boto3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
-from botocore.credentials import Credentials
 from botocore.config import Config
+from botocore.credentials import Credentials
 from playwright.sync_api import sync_playwright
 
 endpoint = os.environ["ARTIFACT_TEST_S3_ENDPOINT"]
@@ -95,8 +96,19 @@ class Origin(BaseHTTPRequestHandler):
         pass
 
 
-server = ThreadingHTTPServer(("127.0.0.1", 0), Origin)
-threading.Thread(target=server.serve_forever, daemon=True).start()
+configured_origin = os.environ.get("ARTIFACT_TEST_BROWSER_ORIGIN", "").rstrip("/")
+page_path = os.environ.get("ARTIFACT_TEST_BROWSER_PAGE_PATH", "/")
+if not page_path.startswith("/"):
+    raise ValueError("ARTIFACT_TEST_BROWSER_PAGE_PATH must start with /")
+listen_port = int(os.environ.get("ARTIFACT_TEST_BROWSER_PORT", "0"))
+server = None
+if configured_origin:
+    origin_url = configured_origin
+else:
+    server = ThreadingHTTPServer(("127.0.0.1", listen_port), Origin)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    origin_url = f"http://127.0.0.1:{server.server_port}"
+page_url = origin_url + page_path
 created = False
 try:
     operator.create_bucket(Bucket=bucket)
@@ -108,7 +120,25 @@ try:
             headless=True,
         )
         page = browser.new_page()
-        page.goto(f"http://127.0.0.1:{server.server_port}")
+        failed_requests = []
+        console_errors = []
+        page.on(
+            "requestfailed",
+            lambda request: failed_requests.append(
+                {
+                    "method": request.method,
+                    "url": request.url,
+                    "failure": request.failure,
+                }
+            ),
+        )
+        page.on(
+            "console",
+            lambda message: console_errors.append(message.text)
+            if message.type == "error"
+            else None,
+        )
+        page.goto(page_url, wait_until="domcontentloaded", timeout=60000)
         for method, body, headers, credential in [
             ("PUT", "hello", {"content-type": "application/octet-stream"}, upload),
             ("GET", None, {}, download),
@@ -131,10 +161,15 @@ try:
                 "headers": dict(req.headers),
                 "body": body,
             }
-            result = page.evaluate(
-                """async r=>{const x=await fetch(r.url,{method:r.method,headers:r.headers,body:r.body});return {status:x.status,body:await x.text(),etag:x.headers.get('etag'),range:x.headers.get('content-range')}}""",
-                data,
-            )
+            try:
+                result = page.evaluate(
+                    """async r=>{const x=await fetch(r.url,{method:r.method,headers:r.headers,body:r.body});return {status:x.status,body:await x.text(),etag:x.headers.get('etag'),range:x.headers.get('content-range')}}""",
+                    data,
+                )
+            except Exception as error:
+                raise RuntimeError(
+                    f"browser fetch failed from {page.url}: {failed_requests}; console: {console_errors[-3:]}"
+                ) from error
             expected = 206 if "Range" in headers else 200
             if result["status"] != expected:
                 raise RuntimeError("browser operation status mismatch")
@@ -152,8 +187,9 @@ try:
             )
         browser.close()
 finally:
-    server.shutdown()
-    server.server_close()
+    if server is not None:
+        server.shutdown()
+        server.server_close()
     if created:
         operator.delete_object(Bucket=bucket, Key="browser")
         operator.delete_bucket(Bucket=bucket)

@@ -17,7 +17,7 @@ dependencies:
     repository: file://../../../forge-tenant-api/charts/forge-tenant-init
   - name: forge-tenant-web
     alias: web
-    version: 0.3.0
+    version: 0.3.1
     repository: file://../../../forge-tenant-web/charts/forge-tenant-web
   - name: juicefs
     version: 0.1.0

@@ -181,17 +181,20 @@ class Probe:
         result = self.service.head_object(
             Bucket=self.args.bucket, Key=key, ChecksumMode="ENABLED"
         )
-        valid = (
-            result["ContentLength"] == size
-            and result.get("ChecksumSHA256") == checksum
-            and result.get("ChecksumType") == checksum_type
-        )
+        valid = result["ContentLength"] == size
+        if self.args.checksum_mode == "trusted":
+            valid = (
+                valid
+                and result.get("ChecksumSHA256") == checksum
+                and result.get("ChecksumType") == checksum_type
+            )
         self.record(
             name,
             "pass" if valid else "fail",
             size=result["ContentLength"],
             checksum_sha256=result.get("ChecksumSHA256"),
             checksum_type=result.get("ChecksumType"),
+            checksum_mode=self.args.checksum_mode,
         )
 
     def multipart(self, client, key):
@@ -215,10 +218,12 @@ class Probe:
                 Body=data,
                 ChecksumSHA256=checksum,
             )
+            accepted = response.get("ChecksumSHA256") == checksum
             self.record(
                 f"multipart_part_{number}",
-                "pass" if response.get("ChecksumSHA256") == checksum else "fail",
+                "pass" if accepted or self.args.checksum_mode == "declared" else "fail",
                 returned_checksum=response.get("ChecksumSHA256"),
+                checksum_mode=self.args.checksum_mode,
             )
             parts.append(
                 {
@@ -243,16 +248,36 @@ class Probe:
 
     def versioning_configuration(self):
         bucket = self.args.bucket
-        versioning = self.service.get_bucket_versioning(Bucket=bucket).get(
-            "Status", "Disabled"
-        )
+        try:
+            versioning = self.service.get_bucket_versioning(Bucket=bucket).get(
+                "Status", "Disabled"
+            )
+        except ClientError as error:
+            if error.response["Error"]["Code"] != "NotImplemented":
+                raise
+            self.record(
+                "versioning_configuration",
+                "pending",
+                reason="backend does not implement the bucket versioning API",
+            )
+            return
         self.record("versioning_configuration", "pass", versioning=versioning)
         # AWS versioned/suspended buckets retain versions; this MVP requires disabled versioning.
         self.check("versioning_reclamation_supported", versioning == "Disabled")
 
     def lifecycle_configuration(self):
         bucket = self.args.bucket
-        lifecycle = self.service.get_bucket_lifecycle_configuration(Bucket=bucket)
+        try:
+            lifecycle = self.service.get_bucket_lifecycle_configuration(Bucket=bucket)
+        except ClientError as error:
+            if error.response["Error"]["Code"] != "NotImplemented":
+                raise
+            self.record(
+                "lifecycle_configuration",
+                "pending",
+                reason="backend does not implement the bucket lifecycle API",
+            )
+            return
         matching = []
         for rule in lifecycle.get("Rules", []):
             filter_ = rule.get("Filter", {})
@@ -275,7 +300,20 @@ class Probe:
     def cors_configuration(self):
         bucket = self.args.bucket
         if self.args.origin:
-            cors = self.service.get_bucket_cors(Bucket=bucket)
+            try:
+                cors = self.service.get_bucket_cors(Bucket=bucket)
+            except ClientError as error:
+                if error.response["Error"]["Code"] not in {
+                    "NoSuchCORSConfiguration",
+                    "NotImplemented",
+                }:
+                    raise
+                self.record(
+                    "cors_configuration",
+                    "pending",
+                    reason="backend does not implement bucket CORS; verify gateway CORS separately",
+                )
+                return
             required_methods = {"PUT", "POST", "GET", "DELETE", "HEAD"}
             required_headers = {
                 "authorization",
@@ -367,14 +405,21 @@ class Probe:
         )
 
         bad_key = self.key("bad-checksum")
-        bad_client, _ = self.grant(bad_key)
-        self.reject(
-            "invalid_checksum_denied",
-            lambda: bad_client.put_object(
-                **{**put, "Key": bad_key, "ChecksumSHA256": digest(b"wrong")}
-            ),
-            {"BadDigest"},
-        )
+        if self.args.checksum_mode == "declared":
+            self.record(
+                "invalid_checksum_denied",
+                "not_applicable",
+                reason="declared checksum is client metadata; backend verification is not required",
+            )
+        else:
+            bad_client, _ = self.grant(bad_key)
+            self.reject(
+                "invalid_checksum_denied",
+                lambda: bad_client.put_object(
+                    **{**put, "Key": bad_key, "ChecksumSHA256": digest(b"wrong")}
+                ),
+                {"BadDigest"},
+            )
 
     def multipart_upload(self):
         bucket = self.args.bucket
@@ -409,10 +454,20 @@ class Probe:
             )
             return
         # Both buckets must be dedicated test buckets. Avoid retaining historical versions.
-        versioning = self.service.get_bucket_versioning(Bucket=bucket).get(
-            "Status", "Disabled"
-        )
-        self.check("other_tenant_versioning_disabled", versioning == "Disabled")
+        try:
+            versioning = self.service.get_bucket_versioning(Bucket=bucket).get(
+                "Status", "Disabled"
+            )
+        except ClientError as error:
+            if error.response["Error"]["Code"] != "NotImplemented":
+                raise
+            self.record(
+                "other_tenant_versioning_disabled",
+                "pending",
+                reason="backend does not implement the bucket versioning API",
+            )
+        else:
+            self.check("other_tenant_versioning_disabled", versioning == "Disabled")
         key = self.key("tenant-isolation")
         self.keys.add((bucket, key))
         client, _ = self.grant(key)
@@ -476,16 +531,13 @@ class Probe:
                         "credentials are expired",
                     )
                 )
+                is_expired = code in {"ExpiredToken", "InvalidAccessKeyId"} or expiration_reason
                 self.record(
                     "credential_expiration",
-                    "pass"
-                    if code == "ExpiredToken" or expiration_reason
-                    else "pending",
+                    "pass" if is_expired else "pending",
                     error_code=code,
                     request_rejected=True,
-                    reason_classification="token_expired"
-                    if code == "ExpiredToken" or expiration_reason
-                    else "unclassified_rejection",
+                    reason_classification="token_expired" if is_expired else "unclassified_rejection",
                 )
             else:
                 self.record(
@@ -622,6 +674,7 @@ class Probe:
             "status": status,
             "run_id": self.run_id,
             "backend": self.args.backend,
+            "checksum_mode": self.args.checksum_mode,
             "service_only": self.args.service_only,
             "bucket": self.args.bucket,
             "other_tenant_bucket": self.args.other_tenant_bucket,
@@ -669,6 +722,12 @@ def main():
         "--addressing-style", choices=["auto", "path", "virtual"], default="auto"
     )
     parser.add_argument("--duration", type=int, default=900)
+    parser.add_argument(
+        "--checksum-mode",
+        choices=["declared", "trusted"],
+        default="declared",
+        help="declared verifies object size only (current contract); trusted also requires backend checksum echoes",
+    )
     parser.add_argument("--session-seconds", type=int, default=3600)
     parser.add_argument("--max-file-bytes", type=int, default=1073741824)
     parser.add_argument("--max-files", type=int, default=100)

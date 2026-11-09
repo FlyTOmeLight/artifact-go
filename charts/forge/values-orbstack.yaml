@@ -31,6 +31,10 @@ web:
   image:
     tag: forge-review-20261022
     pullPolicy: Never
+  configRevision: csp-20261109
+  csp:
+    connectSrc:
+      - http://127.0.0.1:19010
 juicefs:
   image:
     pullPolicy: Never
