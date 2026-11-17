@@ -44,9 +44,30 @@ func TestHelmRender(t *testing.T) {
 	}
 }
 
-func renderForge(t *testing.T, release, namespace string) rendered {
+func TestRendersPropagationServiceAllowlist(t *testing.T) {
+	const release = "forge"
+	r := renderForge(
+		t,
+		release,
+		release,
+		"--set-json",
+		`artifact.forgeTenant.allowedPropagationServices=["forge-agent","forge-scheduler"]`,
+	)
+	runtimeConfig := r.resources["ConfigMap/"+release+"-artifact-runtime"]
+	if runtimeConfig == nil {
+		t.Fatal("missing artifact runtime ConfigMap")
+	}
+	config := parseJSON(t, stringValue(mapValue(runtimeConfig["data"])["config.json"]))
+	got := stringSlice(valueAt(config, []string{"ForgeTenant", "AllowedPropagationServices"}))
+	want := []string{"forge-agent", "forge-scheduler"}
+	if !equalStrings(got, want) {
+		t.Errorf("forge propagation allowlist = %v; want %v", got, want)
+	}
+}
+
+func renderForge(t *testing.T, release, namespace string, extra ...string) rendered {
 	t.Helper()
-	output, stderr, err := helmTemplate(t, release, namespace)
+	output, stderr, err := helmTemplate(t, release, namespace, extra...)
 	if err != nil {
 		t.Fatalf("helm template failed: %v (stderr: %s)", err, safeHelmError(stderr))
 	}
@@ -74,10 +95,9 @@ func renderForge(t *testing.T, release, namespace string) rendered {
 	return r
 }
 
-func helmTemplate(t *testing.T, release, namespace string) ([]byte, string, error) {
+func helmTemplate(t *testing.T, release, namespace string, extra ...string) ([]byte, string, error) {
 	t.Helper()
-	cmd := exec.Command(
-		"helm",
+	args := []string{
 		"template",
 		release,
 		filepath.Join("."),
@@ -91,7 +111,8 @@ func helmTemplate(t *testing.T, release, namespace string) ([]byte, string, erro
 		"bootstrap.existingSecret=fixture-admin",
 		"--set",
 		"global.forge.external.caSecret=",
-	)
+	}
+	cmd := exec.Command("helm", append(args, extra...)...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()

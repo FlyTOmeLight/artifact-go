@@ -59,7 +59,7 @@ MySQL连接必须使用`parseTime=true&loc=UTC`，保证不同机器读取同一
 
 resolver必须认证本次请求，核对选择的完整资源范围，并返回实际操作者`UserID`、`TenantID`、可选`ProjectID`、可选归属`ResourceUserID`及`OwnershipActive`或`OwnershipDeleted`。`X-Resource-User-ID`只选择资源归属；省略表示共享，显式空值拒绝。SDK通过`RequestIdentity.ResourceUserID`传递。内置Forge接入允许共享范围和已认证用户自己的个人范围。租户ID为1–64位ASCII字母、数字、`_`或`-`，保留大小写；与现有租户系统生成的`t_`加24位十六进制ID兼容。SDK里的`x-forge-tenant-id` / `x-forge-project-id`只表达范围选择，不是身份依据。已删除scope需要接入方仍明确授权历史访问；本服务允许读取、归档及现有版本管理，拒绝新建。
 
-Forge 用户可使用新增 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。此实现已部署本机 OrbStack，配置和重部署入口见 [Forge 部署](deploy/forge/README.md)。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
+Forge 用户可使用 `cmd/forge-server`（`bin/artifact-forge-server`），配置 `[ForgeTenant]` 调用 tenant 的 `/internal/v1/scope/resolve`，支持会话和用户 API key。该接口要求 active 用户和租户成员，项目只核对归属，不检查 grants；本轮不接受历史 deleted scope。服务透传另需配置 `ForgeTenant.AllowedPropagationServices`，通过 Forge `/internal/v1/service/self` 验证调用服务，并由该服务负责核验目标用户与范围；默认拒绝服务透传，具体请求和部署前提见[接入手册](docs/consumer-guide.md#forge-服务透传)。服务透传从 `v0.5.1` 开始提供。既有会话接入的本机 OrbStack 配置和重部署入口见 [Forge 部署](deploy/forge/README.md)。**`cmd/server` 默认 Build 仍在缺少 resolver 时拒绝启动**，自定义接入方使用以下装配位置：
 
 ```go
 // resolver is the deployment's verified service.IdentityResolver.

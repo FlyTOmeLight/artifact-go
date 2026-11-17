@@ -80,13 +80,14 @@ func TestResolveWireAndExactActiveScope(t *testing.T) {
 					t.Error(err)
 				}
 				want := map[string]string{
+					"type":      "session",
 					"session":   "user-session",
 					"method":    "POST",
 					"origin":    "https://forge.test",
 					"csrf":      "csrf-value",
 					"tenant_id": "tenant",
 				}
-				if len(body) != 6 {
+				if len(body) != 7 {
 					t.Errorf("unexpected body fields: %d", len(body))
 				}
 				for key, value := range want {
@@ -175,12 +176,93 @@ func TestResolveRejectsUnverifiedResponses(t *testing.T) {
 	}
 }
 
+func TestResolveAPIKeyProof(t *testing.T) {
+	var calls atomic.Int32
+	client := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Header.Get("Authorization") != "Bearer "+tenantToken {
+			t.Error("service token header changed")
+		}
+		var body map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		var proofType, apiKey, session string
+		if json.Unmarshal(body["type"], &proofType) != nil || proofType != "api_key" {
+			t.Error("proof type lost")
+		}
+		if json.Unmarshal(body["api_key"], &apiKey) != nil || apiKey != "user-api-key" {
+			t.Error("API key not forwarded")
+		}
+		if json.Unmarshal(body["session"], &session) != nil || session != "" {
+			t.Error("API key proof must not carry a session")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"principal":       map[string]any{"id": "user", "operator": true},
+			"user_id":         "user",
+			"tenant_id":       "tenant",
+			"project_id":      nil,
+			"ownership_state": "active",
+		})
+	}, 0)
+	r := request(t, http.MethodGet, "")
+	r.Header.Del("Cookie")
+	r.Header.Set("Authorization", "Bearer user-api-key")
+	identity, err := client.Resolve(r)
+	if err != nil || identity.UserID != "user" || identity.TenantID != "tenant" {
+		t.Fatalf("unexpected identity: %+v %v", identity, err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("resolve did not reach Tenant")
+	}
+}
+
+func TestResolveRejectsInvalidProofBeforeCallingTenant(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		bearer  string
+		session bool
+		status  int
+		code    string
+	}{
+		{name: "two proofs", bearer: "Bearer user-api-key", session: true, status: 400, code: "AMBIGUOUS_IDENTITY_PROOF"},
+		{name: "bare scheme with cookie", bearer: "Bearer", session: true, status: 400, code: "AMBIGUOUS_IDENTITY_PROOF"},
+		{name: "empty bearer with cookie", bearer: "Bearer ", session: true, status: 400, code: "AMBIGUOUS_IDENTITY_PROOF"},
+		{name: "bare scheme", bearer: "Bearer", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "empty bearer", bearer: "Bearer ", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "missing proof", bearer: "", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "embedded whitespace", bearer: "Bearer spaced key", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "leading whitespace", bearer: "Bearer  key", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "trailing whitespace", bearer: "Bearer key ", session: false, status: 401, code: "AUTH_REQUIRED"},
+		{name: "unicode whitespace", bearer: "Bearer key\u00a0value", session: false, status: 401, code: "AUTH_REQUIRED"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var calls atomic.Int32
+			client := newClient(t, func(http.ResponseWriter, *http.Request) { calls.Add(1) }, 0)
+			req := request(t, http.MethodGet, "")
+			if !test.session {
+				req.Header.Del("Cookie")
+			}
+			req.Header.Set("Authorization", test.bearer)
+			_, err := client.Resolve(req)
+			expectError(t, err, test.status, test.code)
+			if calls.Load() != 0 {
+				t.Fatal("invalid proof reached Tenant")
+			}
+		})
+	}
+}
+
 func TestResolveMissingCredentialsAndSelection(t *testing.T) {
 	var calls atomic.Int32
 	client := newClient(t, func(http.ResponseWriter, *http.Request) { calls.Add(1) }, 0)
 	r := request(t, http.MethodPost, "")
 	r.Header.Del("Cookie")
 	_, err := client.Resolve(r)
+	expectError(t, err, 401, "AUTH_REQUIRED")
+	r.Header.Del(constants.HeaderTenantID)
+	_, err = client.Resolve(r)
 	expectError(t, err, 401, "AUTH_REQUIRED")
 	r = request(t, http.MethodGet, "")
 	r.Header.Del(constants.HeaderTenantID)

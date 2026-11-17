@@ -63,11 +63,12 @@ if err != nil {
 
 | 字段 | 含义 |
 | --- | --- |
-| `BearerToken` | 通用服务/用户令牌；Forge 接入不使用它表示登录会话 |
+| `BearerToken` | 通用接入的令牌；Forge 接入使用用户 API key，或与 `PropagatedUserID` 配合使用调用服务自己的 API key |
 | `Session` | `forge_session` Cookie 值（仅 Forge 接入） |
 | `CSRFToken` / `Origin` | 写请求的原始 CSRF 与 Origin（仅 Forge 接入） |
 | `TenantID` | 选择的租户，必填 |
 | `ProjectID` | 选择的项目；`nil` 表示租户级 |
+| `PropagatedUserID` | `artifactv1` 的服务透传目标用户；服务须先核验该用户和所选范围 |
 | `ResourceUserID` | 选择的资源归属用户；`nil` 表示共享 |
 | `RequestID` | 写入 `X-Request-ID`，便于关联日志 |
 
@@ -90,6 +91,26 @@ if err != nil {
 - 范围不匹配的其他资源一律 `404`，不泄露其他范围是否存在。
 - `OwnershipState=deleted` 的范围仍允许读取、归档、收回或删除草稿、管理既有版本的注释/保护/删除、改绑 alias、更新保留策略；新建集合与发布版本、新建或保存草稿、登记文件和申请上传授权返回 `403 ScopeInactive`。
 - `CreateArtifactRequest.ProjectID` 只用于断言，与可信范围不一致时返回 `403 ScopeMismatch`；一般留空，范围完全由 `RequestIdentity` 决定。
+
+### Forge 服务透传
+
+此能力从 `v0.5.1` 开始提供；服务端与 SDK 均须使用 `v0.5.1` 或后续版本。调用服务先完成入站鉴权，再使用自己的服务 API key 调用 Artifact：
+
+```go
+ctx = artifactv1.WithRequestIdentity(ctx, artifactv1.RequestIdentity{
+    BearerToken:      serviceAPIKey,
+    TenantID:         verifiedTenantID,
+    ProjectID:        verifiedProjectID,
+    PropagatedUserID: verifiedUserID,
+    ResourceUserID:   &verifiedUserID,
+})
+```
+
+SDK 同时发送范围选择头 `x-forge-*` 和目标身份头 `x-impersonate-target-*`。Artifact 要求两组租户及项目一致，通过 Forge `/internal/v1/service/self` 验证服务凭据，并核对 `ForgeTenant.AllowedPropagationServices`。该名单默认空，拒绝服务透传；Helm 对应 `artifact.forgeTenant.allowedPropagationServices`（umbrella chart）或 `forgeTenant.allowedPropagationServices`（独立 chart）。
+
+白名单中的服务负责核验目标用户及其范围，Artifact 信任该服务提交的目标身份，不再调用用户的 scope resolve。`ResourceUserID` 为 `nil` 时访问共享范围，有值时只允许等于目标用户。调用服务不得直接复制未经验证的请求头，也不要转发入站 Cookie、CSRF、Origin 或用户 Bearer。服务透传携带会话时返回 `400 AMBIGUOUS_IDENTITY_PROOF`。
+
+部署前确认 Forge 已提供 `/internal/v1/service/self`，并以该接口返回的服务名配置白名单。该接口返回 404 表示部署尚未具备此能力，不能据此判断服务 API key 是否有效。普通用户 API key 和会话继续通过 `/internal/v1/scope/resolve` 校验，无须加入服务白名单。
 
 ## 4. 客户端行为
 

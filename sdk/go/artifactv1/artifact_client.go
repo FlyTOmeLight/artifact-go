@@ -63,6 +63,13 @@ func (c *Client) request(ctx context.Context) *resty.Request {
 		if identity.ProjectID != nil && *identity.ProjectID != "" {
 			req.SetHeader(constants.HeaderProjectID, *identity.ProjectID)
 		}
+		if identity.PropagatedUserID != "" {
+			req.SetHeader(constants.HeaderImpersonateTenantID, identity.TenantID)
+			req.SetHeader(constants.HeaderImpersonateUserID, identity.PropagatedUserID)
+			if identity.ProjectID != nil {
+				req.SetHeader(constants.HeaderImpersonateProjectID, *identity.ProjectID)
+			}
+		}
 		if identity.ResourceUserID != nil {
 			req.SetHeader("X-Resource-User-ID", *identity.ResourceUserID)
 		}

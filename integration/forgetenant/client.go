@@ -22,14 +22,17 @@ import (
 )
 
 type Config struct {
-	Endpoint     string
-	ServiceToken string
-	Timeout      time.Duration
+	Endpoint                   string
+	ServiceToken               string
+	Timeout                    time.Duration
+	AllowedPropagationServices []string
 }
 
 type Client struct {
-	endpoint, token string
-	http            *http.Client
+	endpoint, token            string
+	serviceEndpoint            string
+	allowedPropagationServices map[string]bool
+	http                       *http.Client
 }
 
 // New owns its HTTP transport. Close it after all requests have finished.
@@ -55,11 +58,20 @@ func New(config Config) (*Client, error) {
 	if config.Timeout == 0 {
 		config.Timeout = 15 * time.Second
 	}
+	allowed := make(map[string]bool, len(config.AllowedPropagationServices))
+	for _, name := range config.AllowedPropagationServices {
+		if name == "" || strings.IndexFunc(name, unicode.IsSpace) >= 0 || allowed[name] {
+			return nil, errors.New("invalid or duplicate propagation service name")
+		}
+		allowed[name] = true
+	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	return &Client{
-		endpoint: strings.TrimRight(config.Endpoint, "/") + "/internal/v1/scope/resolve",
-		token:    config.ServiceToken,
+		endpoint:                   strings.TrimRight(config.Endpoint, "/") + "/internal/v1/scope/resolve",
+		token:                      config.ServiceToken,
+		serviceEndpoint:            strings.TrimRight(config.Endpoint, "/") + "/internal/v1/service/self",
+		allowedPropagationServices: allowed,
 		http: &http.Client{
 			Transport: transport,
 			Timeout:   config.Timeout,
@@ -77,9 +89,33 @@ func (c *Client) Close() error { c.http.CloseIdleConnections(); return nil }
 // Only active ownership is supported by this integration.
 func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	var empty service.RequestIdentity
-	cookie, err := r.Cookie("forge_session")
-	if err != nil || cookie.Value == "" {
-		return empty, serrors.NewError(http.StatusUnauthorized, "AUTH_REQUIRED", "请先登录")
+	propagating := false
+	for _, header := range []string{
+		constants.HeaderImpersonateTenantID,
+		constants.HeaderImpersonateUserID,
+		constants.HeaderImpersonateProjectID,
+	} {
+		if _, present := r.Header[http.CanonicalHeaderKey(header)]; present {
+			propagating = true
+			break
+		}
+	}
+	session := forgeSession(r)
+	apiKey, hasBearer := bearerCredential(r.Header.Get("Authorization"))
+	if !propagating {
+		if session != "" && hasBearer {
+			return empty, serrors.NewError(
+				http.StatusBadRequest,
+				"AMBIGUOUS_IDENTITY_PROOF",
+				"身份证明只能使用一种凭据",
+			)
+		}
+		if !hasBearer && session == "" {
+			return empty, serrors.NewError(http.StatusUnauthorized, "AUTH_REQUIRED", "请先登录")
+		}
+		if hasBearer && (apiKey == "" || strings.IndexFunc(apiKey, unicode.IsSpace) >= 0) {
+			return empty, serrors.NewError(http.StatusUnauthorized, "AUTH_REQUIRED", "API key 无效")
+		}
 	}
 	tenantValues := r.Header.Values(constants.HeaderTenantID)
 	projectValues := r.Header.Values(constants.HeaderProjectID)
@@ -99,14 +135,27 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	if project != "" {
 		projectID = &project
 	}
+	if propagating {
+		return c.resolvePropagation(r, tenantID, projectID)
+	}
+	proofType := "session"
+	if hasBearer {
+		proofType = "api_key"
+	}
 	input := struct {
+		Type      string  `json:"type"`
+		APIKey    string  `json:"api_key,omitempty"`
 		Session   string  `json:"session"`
 		Method    string  `json:"method"`
 		Origin    string  `json:"origin"`
 		CSRF      string  `json:"csrf"`
 		TenantID  string  `json:"tenant_id"`
 		ProjectID *string `json:"project_id"`
-	}{Session: cookie.Value, Method: r.Method, Origin: r.Header.Get("Origin"), CSRF: r.Header.Get("X-CSRF-Token"), TenantID: tenantID, ProjectID: projectID}
+	}{
+		Type: proofType, APIKey: apiKey, Session: session,
+		Method: r.Method, Origin: r.Header.Get("Origin"), CSRF: r.Header.Get("X-CSRF-Token"),
+		TenantID: tenantID, ProjectID: projectID,
+	}
 	body, err := json.Marshal(input)
 	if err != nil {
 		return empty, unavailable()
@@ -167,12 +216,17 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 		(projectID != nil && *projectID != *resolvedProject) {
 		return empty, unavailable()
 	}
+	return resolvedIdentity(r, result.UserID, tenantID, resolvedProject)
+}
+
+func resolvedIdentity(r *http.Request, userID, tenantID string, projectID *string) (service.RequestIdentity, error) {
+	var empty service.RequestIdentity
 	var resourceUser *string
 	if values, present := r.Header[http.CanonicalHeaderKey("X-Resource-User-ID")]; present {
 		if len(values) != 1 || strings.TrimSpace(values[0]) == "" || strings.TrimSpace(values[0]) != values[0] {
 			return empty, serrors.NewError(400, "InvalidScope", "resource user must be a nonempty ID")
 		}
-		if values[0] != result.UserID {
+		if values[0] != userID {
 			return empty, serrors.NewError(
 				403,
 				"ScopeAccessDenied",
@@ -184,9 +238,9 @@ func (c *Client) Resolve(r *http.Request) (service.RequestIdentity, error) {
 	}
 	return service.RequestIdentity{
 		ResourceUserID: resourceUser,
-		UserID:         result.UserID,
+		UserID:         userID,
 		TenantID:       tenantID,
-		ProjectID:      resolvedProject,
+		ProjectID:      projectID,
 		OwnershipState: service.OwnershipActive,
 	}, nil
 }
@@ -231,6 +285,22 @@ func responseError(status int, raw []byte) error {
 
 func validToken(token string) bool {
 	return len(token) >= 32 && strings.IndexFunc(token, unicode.IsSpace) < 0
+}
+
+func bearerCredential(header string) (string, bool) {
+	if header == "Bearer" {
+		return "", true
+	}
+	return strings.CutPrefix(header, "Bearer ")
+}
+
+func forgeSession(r *http.Request) string {
+	for _, cookie := range r.Cookies() {
+		if cookie.Name == "forge_session" && cookie.Value != "" {
+			return cookie.Value
+		}
+	}
+	return ""
 }
 
 // NewManagementVerifier accepts only dedicated bucket-management Bearer tokens.

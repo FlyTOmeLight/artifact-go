@@ -1,7 +1,7 @@
 dependencies:
 - name: artifact
   repository: file://../artifact
-  version: 0.4.0
+  version: 0.5.1
 - name: forge-tenant
   repository: file://../../../forge-tenant-api/charts/forge-tenant
   version: 0.11.0
@@ -14,5 +14,5 @@ dependencies:
 - name: juicefs
   repository: file://../juicefs
   version: 0.1.0
-digest: sha256:5cf2a15a110ce222bd84804c688d2192bb3714759e8761f24c367a42e05b67c0
-generated: "2026-11-09T12:16:55.773737+08:00"
+digest: sha256:2cd327275fbca5926aee281615eb056074b63eff9f1a595839ce1d4ecb9e0be2
+generated: "2026-11-17T18:52:02.683182+08:00"

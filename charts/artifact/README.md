@@ -13,3 +13,5 @@ API 和代理容器退出前各等待 10 秒，在 Service 端点移除传播期
 TLS Secret 包含 `ca.crt`、`artifact.crt`、`artifact.key`。数据库 Secret 提供 PostgreSQL 环境变量，init Secret 提供初始化 SQL，仅在空数据目录建库。应用 Secret 包含配置中 `${env:...}` 引用的变量。Forge 部署将 `DB.AutoMigrate` 与 `StorageDB.AutoMigrate` 均设为 `true`，服务启动时通过 `service.New` 和 `service.NewStorage` 执行 GORM AutoMigrate，保留当前 schema 的外键约束。Artifact/Storage 不使用独立迁移命令或 migrate initContainer；`storage-iam` initContainer 继续负责 JuiceFS IAM 初始化。全新整套安装使用 [Forge umbrella chart](../forge/README.md)，由它生成凭据、证书和双库初始化配置。
 
 文件查询、绑定和释放在进程内调用，不配置内部 HTTP、服务 token 或监听端口。`StorageConsumerID` 必须与已有 storage_references 的归属一致；升级时保留该部署的现有值。
+
+Forge 模式通过 `forgeTenant.allowedPropagationServices` 配置可透传用户身份的服务名，默认空列表，拒绝服务透传。umbrella chart 对应路径为 `artifact.forgeTenant.allowedPropagationServices`。启用前须确认 Forge `/internal/v1/service/self` 返回的服务名；请求使用该服务自己的 Bearer 凭据，同时携带一致的 `x-forge-*` 与 `x-impersonate-target-*` 租户、用户和可选项目字段。服务负责先核验目标身份和范围，Artifact 仍要求 `X-Resource-User-ID` 与目标用户一致。普通用户会话和 API key 请求无需加入此名单。
