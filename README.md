@@ -245,4 +245,4 @@ STS实际到期不得超过锁内确定的截止时间；签发前扣5秒预算�
 
 ## T12 交付验收
 
-完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。本机真实 Casdoor 登录、文件链路和[重复部署](docs/deployment-consolidation-20261016.md)已通过；生产网络/密钥与生产恢复目标仍待验收。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。
+完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。本机真实 Casdoor 登录、文件链路和[重复部署](docs/deployment-consolidation-20261016.md)已通过；生产网络/密钥与生产恢复目标仍待验收，执行清单见[生产接入验收清单](docs/production-readiness.md)。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。
