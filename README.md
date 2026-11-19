@@ -100,7 +100,7 @@ created, err := client.CreateArtifact(ctx, &artifactv1.CreateArtifactRequest{
 - [T00验证](docs/t00-review-20261015.md)
 - [T01交付记录](docs/t01-acceptance-20261015.md)
 
-本机 JuiceFS 部署与探针资料保留实际验收依据；当前文件业务链路已接入。T01–T11 与 T12 本地验收记录见实施计划，真实 Forge 身份已完成本机验收，生产接入仍待验收。
+本机 JuiceFS 部署与探针资料保留实际验收依据；当前文件业务链路已接入。T01–T11 与 T12 本地验收记录见实施计划，真实 Forge 身份已完成本机验收，OrbStack 生产化验收仍在进行。
 
 集合创建可提供 `requestKey`（至多64字符）；同完整资源范围、实际操作者和键按规范参数重放，首次201、重放200，合法异参409。集合行保存成功事实，归档后重放返回当前状态及retention。无键保持非幂等行为，提交结果不明时不能通过NULL键恢复。旧数据新增user_id为空，保持共享归属；先迁移服务端再启用新客户端，不移除选择Header或请求键降级重试。
 
@@ -245,4 +245,4 @@ STS实际到期不得超过锁内确定的截止时间；签发前扣5秒预算�
 
 ## T12 交付验收
 
-完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。本机真实 Casdoor 登录、文件链路和[重复部署](docs/deployment-consolidation-20261016.md)已通过；生产网络/密钥与生产恢复目标仍待验收，执行清单见[生产接入验收清单](docs/production-readiness.md)。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。
+完整双库 race、维护 CLI、成对数据库恢复、镜像构建和真实 JuiceFS 文件草稿发布/复用/到期回收已通过。运行方式见 [部署说明](deploy/artifact/README.md)，Spec 对照见 [验收矩阵](docs/t12-delivery.md)。默认 server 缺可信身份 resolver 时拒绝启动；Forge session 接入与本机四层联合恢复已完成本地验证，见[接入交付](docs/tenant-integration-acceptance-20261016.md)和[恢复记录](docs/four-layer-recovery-20261016.md)。本机真实 Casdoor 登录、文件链路和[重复部署](docs/deployment-consolidation-20261016.md)已通过；当前没有独立生产环境，OrbStack 实例的网络/密钥、身份、巡检和恢复目标按[OrbStack 生产化验收清单](docs/production-readiness.md)继续验收。此前 TLS/凭据轮换见[部署验收记录](docs/deployment-acceptance-20261015.md)。
