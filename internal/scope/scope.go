@@ -14,11 +14,12 @@ import (
 )
 
 type Identity struct {
-	UserID         string
-	TenantID       string
-	ProjectID      *string
-	ResourceUserID *string
-	Active         bool
+	UserID             string
+	TenantID           string
+	ProjectID          *string
+	ResourceUserID     *string
+	Active             bool
+	PropagatingService string
 }
 
 type identityKey struct{}

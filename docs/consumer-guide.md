@@ -72,6 +72,8 @@ if err != nil {
 | `ResourceUserID` | 选择的资源归属用户；`nil` 表示共享 |
 | `RequestID` | 写入 `X-Request-ID`，便于关联日志 |
 
+`agent-memory` 类型保留给经 Forge 认证并获准透传的 `agentic-kit-api` 服务。该类型沿用精确的租户、项目与资源归属范围。其他调用方创建该类型会收到 `403`，列表会排除该类型，按 ID 或 URI 读取及操作现有归档会收到 `404`。
+
 四种精确范围，空值都是明确范围，不是通配符：
 
 | `ProjectID` | `ResourceUserID` | 范围 |

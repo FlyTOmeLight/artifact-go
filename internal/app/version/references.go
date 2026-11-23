@@ -363,6 +363,7 @@ func (s *Service) prepareReferences(
 			return nil, nil, s.abortFailure(ctx, identity, req, &change, e)
 		}
 		if current.UserID != identity.UserID || current.TenantID != identity.TenantID ||
+			current.PropagatingService != identity.PropagatingService ||
 			current.Key() != identity.Key() {
 			return nil, nil, s.abortFailure(
 				ctx,

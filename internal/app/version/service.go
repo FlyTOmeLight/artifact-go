@@ -66,7 +66,7 @@ func databaseError(err error) error {
 
 func findArtifact(tx *db.DB, identity scope.Identity, id string, lock bool) (table.Artifact, error) {
 	var a table.Artifact
-	q := tx.Where("tenant_id = ? AND scope_key = ?", identity.TenantID, identity.Key())
+	q := identity.Artifacts(tx)
 	if lock {
 		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
 	}

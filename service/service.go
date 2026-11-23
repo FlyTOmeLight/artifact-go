@@ -160,13 +160,7 @@ func New(ctx context.Context, database *db.DB, options Options) (*Service, error
 		if err != nil {
 			return scope.Identity{}, err
 		}
-		return scope.Identity{
-			UserID:         i.UserID,
-			TenantID:       i.TenantID,
-			ProjectID:      i.ProjectID,
-			ResourceUserID: i.ResourceUserID,
-			Active:         i.OwnershipState == OwnershipActive,
-		}, nil
+		return i.scopeIdentity(), nil
 	}
 	return &Service{
 		buckets:        buckets,

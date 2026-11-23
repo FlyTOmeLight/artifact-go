@@ -70,6 +70,7 @@ func TestResolveInternalPropagation(t *testing.T) {
 				t.Fatal(err)
 			}
 			if identity.UserID != "user" || identity.TenantID != "tenant" ||
+				identity.PropagatingService != "agentic-kit-api" ||
 				identity.OwnershipState != service.OwnershipActive || identity.ResourceUserID == nil ||
 				*identity.ResourceUserID != "user" || (identity.ProjectID == nil) != (project == "") ||
 				(identity.ProjectID != nil && *identity.ProjectID != project) {

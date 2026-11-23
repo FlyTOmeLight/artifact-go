@@ -155,7 +155,7 @@ func (s *Service) Update(c *core.Context, req *api.UpdateRetentionRequest) (*api
 			completed = false
 			var a table.Artifact
 			started := time.Now()
-			lockErr := tx.Where("id = ? AND tenant_id = ? AND scope_key = ?", req.ArtifactID, identity.TenantID, identity.Key()).
+			lockErr := identity.Artifacts(tx).Where("id = ?", req.ArtifactID).
 				Clauses(clause.Locking{Strength: "UPDATE"}).
 				First(&a).
 				Error
@@ -231,7 +231,7 @@ func (s *Service) Preview(c *core.Context, req *api.PreviewRetentionRequest) (*a
 		func(tx *db.DB) error {
 			var a table.Artifact
 			started := time.Now()
-			lockErr := tx.Where("id = ? AND tenant_id = ? AND scope_key = ?", req.ArtifactID, identity.TenantID, identity.Key()).
+			lockErr := identity.Artifacts(tx).Where("id = ?", req.ArtifactID).
 				Clauses(clause.Locking{Strength: "SHARE"}).
 				First(&a).
 				Error

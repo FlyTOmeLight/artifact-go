@@ -58,6 +58,9 @@ func (s *Service) Create(c *core.Context, req *api.CreateArtifactRequest) (*api.
 	if !typePattern.MatchString(req.Type) || !namePattern.MatchString(name) {
 		return nil, false, invalid("type and name must be ASCII identifiers starting with a letter")
 	}
+	if err = identity.RequireArtifactType(req.Type); err != nil {
+		return nil, false, err
+	}
 	if utf8.RuneCountInString(req.RequestKey) > 64 || strings.ContainsAny(req.RequestKey, "\x00\r\n") {
 		return nil, false, invalid("requestKey must not exceed 64 characters or contain NUL, CR or LF")
 	}
@@ -72,10 +75,8 @@ func (s *Service) Create(c *core.Context, req *api.CreateArtifactRequest) (*api.
 			Isolation: sql.LevelRepeatableRead, ReadOnly: true,
 		}, func(tx *db.DB) error {
 			var row table.Artifact
-			if err := scoped(
-				tx,
-				identity,
-			).Where("created_by = ? AND request_key = ?", identity.UserID, req.RequestKey).
+			if err := identity.Artifacts(tx).
+				Where("created_by = ? AND request_key = ?", identity.UserID, req.RequestKey).
 				First(&row).
 				Error; err != nil {
 				return err
@@ -172,10 +173,6 @@ func (s *Service) Create(c *core.Context, req *api.CreateArtifactRequest) (*api.
 	return &result, true, nil
 }
 
-func scoped(database *db.DB, identity scope.Identity) *db.DB {
-	return database.Where("tenant_id = ? AND scope_key = ?", identity.TenantID, identity.Key())
-}
-
 func (s *Service) List(c *core.Context, req *api.ListArtifactsRequest) (*api.ListArtifactsResponse, error) {
 	identity, err := scope.From(c)
 	if err != nil {
@@ -194,7 +191,7 @@ func (s *Service) List(c *core.Context, req *api.ListArtifactsRequest) (*api.Lis
 	if err != nil {
 		return nil, serrors.NewError(400, api.CodeInvalidCursor, err.Error())
 	}
-	q := scoped(s.database.WithContext(c.Request.Context()), identity)
+	q := identity.Artifacts(s.database.WithContext(c.Request.Context()))
 	if req.Type != "" {
 		q = q.Where("type = ?", req.Type)
 	}
@@ -246,10 +243,8 @@ func (s *Service) Get(c *core.Context, id string) (*api.ArtifactResponse, error)
 		return nil, err
 	}
 	var row table.Artifact
-	if err = scoped(
-		s.database.WithContext(c.Request.Context()),
-		identity,
-	).First(&row, "id = ?", id).
+	if err = identity.Artifacts(s.database.WithContext(c.Request.Context())).
+		First(&row, "id = ?", id).
 		Error; err != nil {
 		return nil, databaseError(err)
 	}
@@ -274,10 +269,7 @@ func (s *Service) Archive(c *core.Context, id string) (*api.ArtifactResponse, er
 		Retry:     &db.TransactionRetry{MaxAttempts: 3, Timeout: 5 * time.Second, Delay: 10 * time.Millisecond},
 	}, func(tx *db.DB) error {
 		started := time.Now()
-		lockErr := scoped(
-			tx,
-			identity,
-		).Clauses(clause.Locking{Strength: "UPDATE"}).
+		lockErr := identity.Artifacts(tx).Clauses(clause.Locking{Strength: "UPDATE"}).
 			First(&row, "id = ?", id).
 			Error
 		telemetry.ObserveArtifactLock("artifact-archive", time.Since(started))

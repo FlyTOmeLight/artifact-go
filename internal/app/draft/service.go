@@ -63,7 +63,7 @@ func (e *deletedError) Error() string { return "draft is deleted" }
 
 func artifact(tx *db.DB, i scope.Identity, id, strength string) (table.Artifact, error) {
 	var a table.Artifact
-	q := tx.Where("tenant_id = ? AND scope_key = ?", i.TenantID, i.Key())
+	q := i.Artifacts(tx)
 	if strength != "" {
 		q = q.Clauses(clause.Locking{Strength: strength})
 	}

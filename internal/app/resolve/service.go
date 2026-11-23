@@ -50,7 +50,7 @@ func (s *Service) Resolve(c *core.Context, req *api.ResolveRequest) (*api.Resolv
 		db.TransactionOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true},
 		func(tx *db.DB) error {
 			var a table.Artifact
-			if e := tx.Where("id = ? AND tenant_id = ? AND scope_key = ? AND type = ?", uri.ArtifactID, identity.TenantID, identity.Key(), uri.ArtifactType).
+			if e := identity.Artifacts(tx).Where("id = ? AND type = ?", uri.ArtifactID, uri.ArtifactType).
 				First(&a).
 				Error; e != nil {
 				return e

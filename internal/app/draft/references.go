@@ -484,7 +484,8 @@ func (s *Service) apply(
 	if s.recheck != nil {
 		current, err := s.recheck(c.Request)
 		if err == nil &&
-			(current.UserID != i.UserID || current.TenantID != i.TenantID || current.Key() != i.Key()) {
+			(current.UserID != i.UserID || current.TenantID != i.TenantID ||
+				current.PropagatingService != i.PropagatingService || current.Key() != i.Key()) {
 			err = serrors.NewError(403, "ScopeForbidden", "request identity changed")
 		}
 		if err == nil {

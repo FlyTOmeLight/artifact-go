@@ -21,12 +21,25 @@ const (
 // RequestIdentity is produced by the integration's authentication boundary.
 // ProjectID=nil selects the tenant itself; ResourceUserID=nil selects shared data.
 // UserID is the actual actor; ResourceUserID is separately authorized resource ownership.
+// PropagatingService identifies the authenticated service, when one is acting for the user.
 type RequestIdentity struct {
-	UserID         string
-	TenantID       string
-	ProjectID      *string
-	ResourceUserID *string
-	OwnershipState OwnershipState
+	UserID             string
+	TenantID           string
+	ProjectID          *string
+	ResourceUserID     *string
+	OwnershipState     OwnershipState
+	PropagatingService string
+}
+
+func (i RequestIdentity) scopeIdentity() scope.Identity {
+	return scope.Identity{
+		UserID:             i.UserID,
+		TenantID:           i.TenantID,
+		ProjectID:          i.ProjectID,
+		ResourceUserID:     i.ResourceUserID,
+		Active:             i.OwnershipState == OwnershipActive,
+		PropagatingService: i.PropagatingService,
+	}
 }
 
 // IdentityResolver authenticates a request and verifies its exact selected scope.
@@ -59,16 +72,7 @@ func identityMiddleware(resolve IdentityResolver) core.HandlerFunc {
 			)
 			return
 		}
-		scope.Set(
-			ctx,
-			scope.Identity{
-				UserID:         identity.UserID,
-				TenantID:       identity.TenantID,
-				ProjectID:      identity.ProjectID,
-				ResourceUserID: identity.ResourceUserID,
-				Active:         identity.OwnershipState == OwnershipActive,
-			},
-		)
+		scope.Set(ctx, identity.scopeIdentity())
 		ctx.Next()
 	}
 }

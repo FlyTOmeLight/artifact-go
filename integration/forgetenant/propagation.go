@@ -104,5 +104,10 @@ func (c *Client) resolvePropagation(
 	if !c.allowedPropagationServices[result.Service] {
 		return empty, serrors.NewError(403, "ScopeAccessDenied", "internal service cannot propagate identity")
 	}
-	return resolvedIdentity(r, values[1], tenantID, projectID)
+	identity, err := resolvedIdentity(r, values[1], tenantID, projectID)
+	if err != nil {
+		return empty, err
+	}
+	identity.PropagatingService = result.Service
+	return identity, nil
 }

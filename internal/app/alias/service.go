@@ -40,7 +40,7 @@ func databaseError(err error) error {
 
 func owner(tx *db.DB, identity scope.Identity, id string, lock bool) (table.Artifact, error) {
 	var a table.Artifact
-	q := tx.Where("tenant_id = ? AND scope_key = ? AND id = ?", identity.TenantID, identity.Key(), id)
+	q := identity.Artifacts(tx).Where("id = ?", id)
 	if lock {
 		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -177,7 +177,7 @@ func (s *Service) Get(c *core.Context, req *api.GetAliasRequest) (*api.AliasResp
 		func(tx *db.DB) error {
 			var a table.Artifact
 			started := time.Now()
-			lockErr := tx.Where("tenant_id = ? AND scope_key = ? AND id = ?", identity.TenantID, identity.Key(), req.ArtifactID).
+			lockErr := identity.Artifacts(tx).Where("id = ?", req.ArtifactID).
 				Clauses(clause.Locking{Strength: "SHARE"}).
 				First(&a).
 				Error
