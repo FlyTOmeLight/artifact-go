@@ -39,7 +39,7 @@
 
 ## 构建与检查
 
-需要Go 1.27.1、C编译工具及Docker（本机可用OrbStack）。正式依赖server-go v0.13.0，无本地replace。
+需要Go 1.27.1、C编译工具及Docker（本机可用OrbStack）。正式依赖server-go v0.17.1，无本地replace。
 
 ```sh
 make build
